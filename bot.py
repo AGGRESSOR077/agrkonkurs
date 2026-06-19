@@ -92,6 +92,7 @@ def subscription_inline_keyboard(not_subscribed: list, check_callback: str = "ch
 # ===================== HELPERS =====================
 
 async def check_subscriptions(user_id: int) -> list:
+    """Obuna bo'lmagan kanallar ro'yxatini qaytaradi"""
     channels = db.get_channels_with_names()
     not_subscribed = []
     for username, name in channels:
@@ -104,20 +105,11 @@ async def check_subscriptions(user_id: int) -> list:
     return not_subscribed
 
 
-def is_valid_pubg_id(pubg_id: str) -> bool:
-    """Kamida 7 xona, 5 yoki 6 bilan boshlanishi kerak"""
-    return (
-        pubg_id.isdigit()
-        and len(pubg_id) >= 7
-        and pubg_id[0] in ("5", "6")
-    )
-
-
 async def guard(message: types.Message) -> bool:
     """
     Har tugma bosilganda tekshiradi:
     1. Ban
-    2. Ro'yxatdan o'tganmi (PUBG ID bor)
+    2. Ro'yxatdan o'tganmi
     3. Telefon raqam bor
     4. Kanallarga obuna
     False qaytsa — handler to'xtashi kerak.
@@ -134,15 +126,13 @@ async def guard(message: types.Message) -> bool:
 
     if not user:
         await message.answer(
-            "⚠️ Avval ro'yxatdan o'ting!\n\n"
-            "🎮 <b>PUBG ID</b> ingizni yuboring:",
-            parse_mode="HTML",
+            "⚠️ Avval ro'yxatdan o'ting!\n\n/start bosing.",
             reply_markup=ReplyKeyboardRemove()
         )
         return False
 
     # Telefon raqam yo'qmi?
-    if not user[4]:
+    if not user[4]:  # phone = index 4
         not_subscribed = await check_subscriptions(user_id)
         if not_subscribed:
             await message.answer(
@@ -151,8 +141,7 @@ async def guard(message: types.Message) -> bool:
             )
         else:
             await message.answer(
-                "⚠️ Ro'yxatdan o'tishni tugating!\n\n"
-                "📱 Telefon raqamingizni yuboring:",
+                "⚠️ Ro'yxatdan o'tishni tugating!\n\n📱 Telefon raqamingizni yuboring:",
                 reply_markup=phone_keyboard()
             )
         return False
@@ -206,12 +195,11 @@ async def start_handler(message: types.Message, state: FSMContext):
         await state.set_state(RegisterStates.waiting_pubg_id)
         return
 
-    # Telefon yo'q — davom ettirish
+    # Telefon yo'q — ro'yxatni davom ettirish
     if not user[4]:
         await state.update_data(referrer_id=referrer_id)
         not_subscribed = await check_subscriptions(user_id)
         if not_subscribed and user_id != ADMIN_ID:
-            await state.update_data(step="need_phone_after_sub")
             await message.answer(
                 "⚠️ Endi quyidagi kanallarga obuna bo'ling:",
                 reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub_then_phone")
@@ -244,10 +232,10 @@ async def pubg_id_handler(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     pubg_id = message.text.strip()
 
-    if not is_valid_pubg_id(pubg_id):
+    # Tekshiruv: kamida 7 xona, 5 yoki 6 bilan boshlansin — OGOHLANTIRMASDAN rad etish
+    if not (pubg_id.isdigit() and len(pubg_id) >= 7 and pubg_id[0] in ("5", "6")):
         await message.answer(
             "❌ Noto'g'ri PUBG ID!\n\n"
-            "PUBG ID kamida 7 xonali raqam bo'lishi va 5 yoki 6 raqami bilan boshlanishi kerak.\n\n"
             "Qaytadan yuboring:"
         )
         return
@@ -262,7 +250,6 @@ async def pubg_id_handler(message: types.Message, state: FSMContext):
 
     not_subscribed = await check_subscriptions(user_id)
     if not_subscribed and user_id != ADMIN_ID:
-        await state.update_data(step="need_phone_after_sub")
         await message.answer(
             "✅ PUBG ID saqlandi!\n\n"
             "⚠️ Endi quyidagi kanallarga obuna bo'ling:",
@@ -296,6 +283,7 @@ async def phone_handler(message: types.Message, state: FSMContext):
 
     db.update_phone(user_id, phone)
 
+    # Referal — faqat to'liq ro'yxatdan o'tgandan keyin
     if referrer_id and db.get_user(referrer_id):
         db.add_referral(referrer_id, user_id)
         try:
@@ -317,7 +305,10 @@ async def phone_handler(message: types.Message, state: FSMContext):
 
 @dp.message(RegisterStates.waiting_phone)
 async def phone_wrong(message: types.Message):
-    await message.answer("❗ Iltimos, tugma orqali telefon raqamingizni yuboring:", reply_markup=phone_keyboard())
+    await message.answer(
+        "❗ Iltimos, tugma orqali telefon raqamingizni yuboring:",
+        reply_markup=phone_keyboard()
+    )
 
 
 # ===================== SUBSCRIPTION CHECK =====================
@@ -403,6 +394,7 @@ async def my_profile(message: types.Message):
     user = db.get_user(user_id)
     if not user:
         return
+    # users jadval: user_id, full_name, username, pubg_id, phone, referrer_id, is_banned, joined_at
     uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
     count = db.get_referral_count(user_id)
     rank = db.get_user_rank(user_id)
@@ -559,7 +551,10 @@ async def add_channel_username(message: types.Message, state: FSMContext):
         )
         await state.set_state(AdminStates.waiting_channel_name)
     except Exception:
-        await message.answer("❌ Kanal topilmadi! Bot kanalga <b>Admin</b> bo'lishini tekshiring.", parse_mode="HTML")
+        await message.answer(
+            "❌ Kanal topilmadi! Bot kanalga <b>Admin</b> bo'lishini tekshiring.",
+            parse_mode="HTML"
+        )
 
 
 @dp.message(AdminStates.waiting_channel_name)
@@ -573,7 +568,8 @@ async def add_channel_name(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
         f"✅ <b>{channel_name}</b> kanali qo'shildi!\nUsername: <code>{channel_username}</code>",
-        parse_mode="HTML", reply_markup=admin_reply_keyboard()
+        parse_mode="HTML",
+        reply_markup=admin_reply_keyboard()
     )
 
 
@@ -586,9 +582,14 @@ async def remove_channel_start(message: types.Message):
     if not channels:
         await message.answer("📋 Kanallar ro'yxati bo'sh.")
         return
-    buttons = [[InlineKeyboardButton(text=f"❌ {name} ({uname})", callback_data=f"del_ch:{uname}")]
-               for uname, name in channels]
-    await message.answer("➖ O'chiriladigan kanalni tanlang:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    buttons = [
+        [InlineKeyboardButton(text=f"❌ {name} ({uname})", callback_data=f"del_ch:{uname}")]
+        for uname, name in channels
+    ]
+    await message.answer(
+        "➖ O'chiriladigan kanalni tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 
 @dp.callback_query(F.data.startswith("del_ch:"))
@@ -641,8 +642,11 @@ async def ban_menu(message: types.Message):
         [InlineKeyboardButton(text="🚫 Ban qilish", callback_data="ban_action")],
         [InlineKeyboardButton(text="✅ Bandan chiqarish", callback_data="unban_action")],
     ]
-    await message.answer("🚫 <b>Ban boshqaruvi</b>", parse_mode="HTML",
-                         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await message.answer(
+        "🚫 <b>Ban boshqaruvi</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 
 @dp.callback_query(F.data == "ban_action")
@@ -668,7 +672,11 @@ async def ban_user_handler(message: types.Message, state: FSMContext):
         return
     db.ban_user(user[0])
     await state.clear()
-    await message.answer(f"✅ <b>@{username}</b> ban qilindi!", parse_mode="HTML", reply_markup=admin_reply_keyboard())
+    await message.answer(
+        f"✅ <b>@{username}</b> ban qilindi!",
+        parse_mode="HTML",
+        reply_markup=admin_reply_keyboard()
+    )
     try:
         await bot.send_message(user[0], "🚫 Siz botdan bloklangansiz.")
     except Exception:
@@ -698,7 +706,11 @@ async def unban_user_handler(message: types.Message, state: FSMContext):
         return
     db.unban_user(user[0])
     await state.clear()
-    await message.answer(f"✅ <b>@{username}</b> bandan chiqarildi!", parse_mode="HTML", reply_markup=admin_reply_keyboard())
+    await message.answer(
+        f"✅ <b>@{username}</b> bandan chiqarildi!",
+        parse_mode="HTML",
+        reply_markup=admin_reply_keyboard()
+    )
     try:
         await bot.send_message(user[0], "✅ Baningiz olib tashlandi! Botdan foydalanishingiz mumkin.")
     except Exception:
@@ -725,18 +737,26 @@ async def search_user_handler(message: types.Message, state: FSMContext):
         return
     query = message.text.strip()
     await state.clear()
-    user = None
+
     if query.startswith("@"):
         user = db.get_user_by_username(query.lstrip("@"))
     else:
         user = db.get_user_by_pubg_id(query)
+
     if not user:
-        await message.answer(f"❌ '{query}' bo'yicha foydalanuvchi topilmadi.", reply_markup=admin_reply_keyboard())
+        await message.answer(
+            f"❌ '<b>{query}</b>' bo'yicha foydalanuvchi topilmadi.",
+            parse_mode="HTML",
+            reply_markup=admin_reply_keyboard()
+        )
         return
+
+    # users: user_id, full_name, username, pubg_id, phone, referrer_id, is_banned, joined_at
     uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
     ref_count = db.get_referral_count(uid)
     rank = db.get_user_rank(uid)
     ban_status = "🚫 Ban" if banned else "✅ Faol"
+
     await message.answer(
         f"🔍 <b>Qidiruv natijasi</b>\n\n"
         f"👤 Ism: <b>{name}</b>\n"
@@ -745,7 +765,7 @@ async def search_user_handler(message: types.Message, state: FSMContext):
         f"🎮 PUBG ID: <code>{pubg_id}</code>\n"
         f"📱 Telefon: <code>{phone if phone else 'Yo\'q'}</code>\n"
         f"👥 Referallar: <b>{ref_count}</b> ta\n"
-        f"🏆 Reyting: <b>#{rank}</b>\n"
+        f"🏆 Reyting: <b>#{rank if ref_count > 0 else 'Yo\'q'}</b>\n"
         f"📌 Holat: {ban_status}",
         parse_mode="HTML",
         reply_markup=admin_reply_keyboard()
@@ -757,7 +777,10 @@ async def search_user_handler(message: types.Message, state: FSMContext):
 async def msg_user_start(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
-    await message.answer("📨 Foydalanuvchining <b>Telegram ID</b> sini yuboring:", parse_mode="HTML")
+    await message.answer(
+        "📨 Foydalanuvchining <b>Telegram ID</b> sini yuboring:",
+        parse_mode="HTML"
+    )
     await state.set_state(AdminStates.waiting_msg_user_id)
 
 
@@ -842,6 +865,7 @@ async def gifts_admin_menu(message: types.Message):
             text += f"  Top {place} — {gift_name}\n"
     else:
         text += "Hozircha sovgalar yo'q.\n"
+
     buttons = [
         [InlineKeyboardButton(text="➕ Sovga qo'shish / yangilash", callback_data="add_gift")],
         [InlineKeyboardButton(text="➖ Sovga o'chirish", callback_data="remove_gift")],
@@ -856,7 +880,8 @@ async def add_gift_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id != ADMIN_ID:
         return
     await callback.message.edit_text(
-        "➕ <b>Qaysi o'ringa sovga?</b>\nMisol: <code>1</code>", parse_mode="HTML"
+        "➕ <b>Qaysi o'ringa sovga?</b>\nMisol: <code>1</code>",
+        parse_mode="HTML"
     )
     await state.set_state(AdminStates.waiting_gift_place)
 
@@ -884,7 +909,10 @@ async def add_gift_name(message: types.Message, state: FSMContext):
     place = data.get("gift_place")
     db.set_gift(place, message.text.strip())
     await state.clear()
-    await message.answer(f"✅ Top {place} uchun sovga saqlandi!", reply_markup=admin_reply_keyboard())
+    await message.answer(
+        f"✅ Top {place} uchun sovga saqlandi!",
+        reply_markup=admin_reply_keyboard()
+    )
 
 
 @dp.callback_query(F.data == "remove_gift")
@@ -895,8 +923,14 @@ async def remove_gift_menu(callback: CallbackQuery):
     if not gifts:
         await callback.answer("Sovgalar yo'q!", show_alert=True)
         return
-    buttons = [[InlineKeyboardButton(text=f"❌ Top {p} — {n}", callback_data=f"del_gift:{p}")] for p, n in gifts]
-    await callback.message.edit_text("➖ O'chiriladigan sovgani tanlang:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    buttons = [
+        [InlineKeyboardButton(text=f"❌ Top {p} — {n}", callback_data=f"del_gift:{p}")]
+        for p, n in gifts
+    ]
+    await callback.message.edit_text(
+        "➖ O'chiriladigan sovgani tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 
 @dp.callback_query(F.data.startswith("del_gift:"))
@@ -914,13 +948,14 @@ async def set_top_limit_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id != ADMIN_ID:
         return
     await callback.message.edit_text(
-        "🔢 <b>Sovga beriladigan o'rinlar sonini kiriting</b>\nMisol: <code>10</code>", parse_mode="HTML"
+        "🔢 <b>Sovga beriladigan o'rinlar sonini kiriting</b>\nMisol: <code>10</code>",
+        parse_mode="HTML"
     )
     await state.set_state(AdminStates.waiting_gift_top_limit)
 
 
 @dp.message(AdminStates.waiting_gift_top_limit)
-async def set_top_limit(message: types.Message, state: FSMContext):
+async def set_top_limit_handler(message: types.Message, state: FSMContext):
     if message.from_user.id != ADMIN_ID:
         return
     try:
@@ -929,7 +964,11 @@ async def set_top_limit(message: types.Message, state: FSMContext):
             raise ValueError
         db.set_gift_top_limit(limit)
         await state.clear()
-        await message.answer(f"✅ Sovga beriladigan o'rinlar: <b>Top {limit}</b>", parse_mode="HTML", reply_markup=admin_reply_keyboard())
+        await message.answer(
+            f"✅ Sovga beriladigan o'rinlar: <b>Top {limit}</b>",
+            parse_mode="HTML",
+            reply_markup=admin_reply_keyboard()
+        )
     except ValueError:
         await message.answer("❌ Musbat raqam kiriting!")
 
@@ -951,7 +990,11 @@ async def set_end_date_handler(message: types.Message, state: FSMContext):
         return
     db.set_contest_end_date(message.text.strip())
     await state.clear()
-    await message.answer(f"✅ Konkurs tugash sanasi: <b>{message.text.strip()}</b>", parse_mode="HTML", reply_markup=admin_reply_keyboard())
+    await message.answer(
+        f"✅ Konkurs tugash sanasi: <b>{message.text.strip()}</b>",
+        parse_mode="HTML",
+        reply_markup=admin_reply_keyboard()
+    )
 
 
 # ---- Konkursni tugatish ----
@@ -985,7 +1028,9 @@ async def do_end_contest(callback: CallbackQuery):
     db.reset_contest()
     await callback.message.edit_text(
         "✅ <b>Konkurs muvaffaqiyatli tugatildi!</b>\n\n"
-        "🗑 Barcha referallar tozalandi\n🗑 Sovgalar o'chirildi\n🔄 Foydalanuvchilar saqlanib qoldi",
+        "🗑 Barcha referallar tozalandi\n"
+        "🗑 Sovgalar o'chirildi\n"
+        "🔄 Foydalanuvchilar saqlanib qoldi",
         parse_mode="HTML"
     )
     success = 0
@@ -993,14 +1038,19 @@ async def do_end_contest(callback: CallbackQuery):
         try:
             await bot.send_message(
                 uid,
-                "🏁 <b>Konkurs yakunlandi!</b>\n\nBarcha g'oliblar bilan tez orada bog'lanamiz.\nYangi konkursda ham ishtirok eting! 🎁",
+                "🏁 <b>Konkurs yakunlandi!</b>\n\n"
+                "Barcha g'oliblar bilan tez orada bog'lanamiz.\n"
+                "Yangi konkursda ham ishtirok eting! 🎁",
                 parse_mode="HTML"
             )
             success += 1
         except Exception:
             pass
         await asyncio.sleep(0.05)
-    await bot.send_message(ADMIN_ID, f"📢 Konkurs tugashi haqida xabar {success} ta foydalanuvchiga yuborildi.")
+    await bot.send_message(
+        ADMIN_ID,
+        f"📢 Konkurs tugashi haqida xabar {success} ta foydalanuvchiga yuborildi."
+    )
 
 
 @dp.callback_query(F.data == "cancel_end_contest")
@@ -1013,14 +1063,14 @@ async def cancel_end_contest(callback: CallbackQuery):
 # ===================== KUNLIK ESLATMA =====================
 
 async def daily_reminder():
+    """Har 24 soatda bir marta eslatma yuboradi"""
     await asyncio.sleep(86400)
     while True:
         user_ids = db.get_all_user_ids()
-        stat_limit = db.get_stat_top_limit()
         for uid in user_ids:
             try:
                 user = db.get_user(uid)
-                if not user or not user[4]:
+                if not user or not user[4]:  # telefon yo'q
                     continue
                 count = db.get_referral_count(uid)
                 if count == 0:
@@ -1031,7 +1081,8 @@ async def daily_reminder():
                     msg = (
                         f"📊 <b>Kunlik statistika</b>\n\n"
                         f"🏆 Siz hozir <b>#{rank}</b> dasiz — sovga zonasida! 🎉\n"
-                        f"👥 Referallar: <b>{count}</b> ta\n\nShunday davom eting! 💪"
+                        f"👥 Referallar: <b>{count}</b> ta\n\n"
+                        f"Shunday davom eting! 💪"
                     )
                 else:
                     needed = rank - gift_limit
@@ -1062,6 +1113,7 @@ async def channel_member_update(update: types.ChatMemberUpdated):
     new_status = update.new_chat_member.status
     target_user = update.new_chat_member.user
 
+    # Kanaldan chiqdi
     if old_status in ["member", "administrator", "creator"] and new_status in ["left", "kicked"]:
         referrer_id = db.get_referrer_of(target_user.id)
         if referrer_id:
@@ -1079,6 +1131,7 @@ async def channel_member_update(update: types.ChatMemberUpdated):
             except Exception as e:
                 logger.error(f"Referer xabar xato: {e}")
 
+    # Kanalga qaytdi
     elif old_status in ["left", "kicked", "banned"] and new_status in ["member", "administrator", "creator"]:
         referrer_id = db.get_referrer_of(target_user.id)
         if referrer_id:
@@ -1100,7 +1153,7 @@ async def channel_member_update(update: types.ChatMemberUpdated):
 # ===================== MAIN =====================
 
 async def main():
-    logger.info("Bot ishga tushdi!")
+    logger.info("Bot v5 ishga tushdi!")
     asyncio.create_task(daily_reminder())
     await dp.start_polling(bot, allowed_updates=["message", "callback_query", "chat_member"])
 
