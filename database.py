@@ -23,19 +23,21 @@ class Database:
                 phone TEXT,
                 referrer_id INTEGER,
                 is_banned INTEGER DEFAULT 0,
+                language TEXT DEFAULT 'uz',
                 joined_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
-        # Eski users jadvalga yangi ustunlar qo'shish (mavjud DB uchun)
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT")
-        except Exception:
-            pass
-        try:
-            cursor.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0")
-        except Exception:
-            pass
+        # Eski jadvalga yangi ustunlar qo'shish
+        for col, definition in [
+            ("phone", "TEXT"),
+            ("is_banned", "INTEGER DEFAULT 0"),
+            ("language", "TEXT DEFAULT 'uz'"),
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
+            except Exception:
+                pass
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS referrals (
@@ -43,16 +45,22 @@ class Database:
                 referrer_id INTEGER,
                 referred_id INTEGER,
                 is_active INTEGER DEFAULT 1,
+                week_number INTEGER,
+                year INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(referrer_id, referred_id)
             )
         """)
 
-        # referrals jadvalga is_active ustuni qo'shish
-        try:
-            cursor.execute("ALTER TABLE referrals ADD COLUMN is_active INTEGER DEFAULT 1")
-        except Exception:
-            pass
+        for col, definition in [
+            ("is_active", "INTEGER DEFAULT 1"),
+            ("week_number", "INTEGER"),
+            ("year", "INTEGER"),
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE referrals ADD COLUMN {col} {definition}")
+            except Exception:
+                pass
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS channels (
@@ -62,8 +70,6 @@ class Database:
                 added_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
-
-        # channels jadvalga channel_name ustuni qo'shish
         try:
             cursor.execute("ALTER TABLE channels ADD COLUMN channel_name TEXT")
         except Exception:
@@ -73,9 +79,14 @@ class Database:
             CREATE TABLE IF NOT EXISTS gifts (
                 place INTEGER PRIMARY KEY,
                 gift_name TEXT,
+                given INTEGER DEFAULT 0,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        try:
+            cursor.execute("ALTER TABLE gifts ADD COLUMN given INTEGER DEFAULT 0")
+        except Exception:
+            pass
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS settings (
@@ -90,18 +101,29 @@ class Database:
 
     # ========== USERS ==========
 
-    def add_user(self, user_id, full_name, username, pubg_id, referrer_id=None):
+    def add_user(self, user_id, full_name, username, pubg_id, referrer_id=None, language='uz'):
         cursor = self.conn.cursor()
         cursor.execute("""
-            INSERT OR IGNORE INTO users (user_id, full_name, username, pubg_id, referrer_id, joined_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, full_name, username, pubg_id, referrer_id, datetime.now().isoformat()))
+            INSERT OR IGNORE INTO users (user_id, full_name, username, pubg_id, referrer_id, language, joined_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, full_name, username, pubg_id, referrer_id, language, datetime.now().isoformat()))
         self.conn.commit()
 
     def update_phone(self, user_id, phone):
         cursor = self.conn.cursor()
         cursor.execute("UPDATE users SET phone = ? WHERE user_id = ?", (phone, user_id))
         self.conn.commit()
+
+    def update_language(self, user_id, language):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET language = ? WHERE user_id = ?", (language, user_id))
+        self.conn.commit()
+
+    def get_user_language(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT language FROM users WHERE user_id = ?", (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else 'uz'
 
     def get_user(self, user_id):
         cursor = self.conn.cursor()
@@ -112,6 +134,29 @@ class Database:
         username = username.lstrip("@")
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,))
+        return cursor.fetchone()
+
+    def get_user_by_pubg_id(self, pubg_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE pubg_id = ?", (pubg_id,))
+        return cursor.fetchone()
+
+    def search_users(self, query):
+        """Username yoki PUBG ID bo'yicha qidirish"""
+        cursor = self.conn.cursor()
+        q = query.lstrip("@").lower()
+        cursor.execute("""
+            SELECT user_id, full_name, username, pubg_id, phone FROM users
+            WHERE LOWER(username) LIKE ? OR LOWER(pubg_id) LIKE ?
+            LIMIT 10
+        """, (f"%{q}%", f"%{q}%"))
+        return cursor.fetchall()
+
+    def get_user_by_phone(self, phone):
+        """Telefon raqami bo'yicha foydalanuvchi topish (fake referal himoyasi)"""
+        cursor = self.conn.cursor()
+        # Raqamni normallashtirish: oxirgi 9 ta raqamni taqqoslash
+        cursor.execute("SELECT user_id FROM users WHERE phone = ? AND phone IS NOT NULL", (phone,))
         return cursor.fetchone()
 
     def ban_user(self, user_id):
@@ -145,50 +190,98 @@ class Database:
         cursor.execute("SELECT user_id, full_name, username, pubg_id, phone FROM users ORDER BY joined_at DESC")
         return cursor.fetchall()
 
-    def get_top_users(self, limit=20):
+    def get_top_users(self, limit=20, weekly=False):
         cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT u.user_id, u.full_name, u.username, u.pubg_id,
-                   COUNT(r.id) as ref_count
-            FROM users u
-            LEFT JOIN referrals r ON r.referrer_id = u.user_id AND r.is_active = 1
-            GROUP BY u.user_id
-            ORDER BY ref_count DESC
-            LIMIT ?
-        """, (limit,))
-        return cursor.fetchall()
-
-    def get_user_rank(self, user_id):
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT rank FROM (
-                SELECT user_id, ROW_NUMBER() OVER (ORDER BY COUNT(r.id) DESC) as rank
+        if weekly:
+            now = datetime.now()
+            week = now.isocalendar()[1]
+            year = now.year
+            cursor.execute("""
+                SELECT u.user_id, u.full_name, u.username, u.pubg_id,
+                       COUNT(r.id) as ref_count
+                FROM users u
+                LEFT JOIN referrals r ON r.referrer_id = u.user_id
+                    AND r.is_active = 1
+                    AND r.week_number = ?
+                    AND r.year = ?
+                GROUP BY u.user_id
+                ORDER BY ref_count DESC
+                LIMIT ?
+            """, (week, year, limit))
+        else:
+            cursor.execute("""
+                SELECT u.user_id, u.full_name, u.username, u.pubg_id,
+                       COUNT(r.id) as ref_count
                 FROM users u
                 LEFT JOIN referrals r ON r.referrer_id = u.user_id AND r.is_active = 1
                 GROUP BY u.user_id
-            ) WHERE user_id = ?
-        """, (user_id,))
+                ORDER BY ref_count DESC
+                LIMIT ?
+            """, (limit,))
+        return cursor.fetchall()
+
+    def get_user_rank(self, user_id, weekly=False):
+        cursor = self.conn.cursor()
+        if weekly:
+            now = datetime.now()
+            week = now.isocalendar()[1]
+            year = now.year
+            cursor.execute("""
+                SELECT rank FROM (
+                    SELECT u.user_id, ROW_NUMBER() OVER (ORDER BY COUNT(r.id) DESC) as rank
+                    FROM users u
+                    LEFT JOIN referrals r ON r.referrer_id = u.user_id
+                        AND r.is_active = 1
+                        AND r.week_number = ?
+                        AND r.year = ?
+                    GROUP BY u.user_id
+                ) WHERE user_id = ?
+            """, (week, year, user_id))
+        else:
+            cursor.execute("""
+                SELECT rank FROM (
+                    SELECT user_id, ROW_NUMBER() OVER (ORDER BY COUNT(r.id) DESC) as rank
+                    FROM users u
+                    LEFT JOIN referrals r ON r.referrer_id = u.user_id AND r.is_active = 1
+                    GROUP BY u.user_id
+                ) WHERE user_id = ?
+            """, (user_id,))
         result = cursor.fetchone()
         return result[0] if result else 0
+
+    def get_user_ref_count_weekly(self, user_id):
+        now = datetime.now()
+        week = now.isocalendar()[1]
+        year = now.year
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM referrals
+            WHERE referrer_id = ? AND is_active = 1
+            AND week_number = ? AND year = ?
+        """, (user_id, week, year))
+        return cursor.fetchone()[0]
 
     # ========== REFERRALS ==========
 
     def add_referral(self, referrer_id, referred_id):
         cursor = self.conn.cursor()
+        now = datetime.now()
+        week = now.isocalendar()[1]
+        year = now.year
         try:
-            # Avval mavjudligini tekshir
             cursor.execute("SELECT id, is_active FROM referrals WHERE referrer_id = ? AND referred_id = ?",
                            (referrer_id, referred_id))
             existing = cursor.fetchone()
             if existing:
-                # Mavjud bo'lsa, active qilish
-                cursor.execute("UPDATE referrals SET is_active = 1 WHERE referrer_id = ? AND referred_id = ?",
-                               (referrer_id, referred_id))
+                cursor.execute("""
+                    UPDATE referrals SET is_active = 1, week_number = ?, year = ?
+                    WHERE referrer_id = ? AND referred_id = ?
+                """, (week, year, referrer_id, referred_id))
             else:
                 cursor.execute("""
-                    INSERT INTO referrals (referrer_id, referred_id, is_active)
-                    VALUES (?, ?, 1)
-                """, (referrer_id, referred_id))
+                    INSERT INTO referrals (referrer_id, referred_id, is_active, week_number, year)
+                    VALUES (?, ?, 1, ?, ?)
+                """, (referrer_id, referred_id, week, year))
             cursor.execute("""
                 UPDATE users SET referrer_id = ? WHERE user_id = ? AND referrer_id IS NULL
             """, (referrer_id, referred_id))
@@ -197,7 +290,6 @@ class Database:
             print(f"add_referral xato: {e}")
 
     def deactivate_referral(self, referrer_id, referred_id):
-        """Referalni o'chirmay, nofaol qiladi (qayta obuna bo'lsa qaytarish uchun)"""
         cursor = self.conn.cursor()
         cursor.execute("""
             UPDATE referrals SET is_active = 0 WHERE referrer_id = ? AND referred_id = ?
@@ -252,9 +344,14 @@ class Database:
     def set_gift(self, place, gift_name):
         cursor = self.conn.cursor()
         cursor.execute("""
-            INSERT OR REPLACE INTO gifts (place, gift_name, updated_at)
-            VALUES (?, ?, ?)
+            INSERT OR REPLACE INTO gifts (place, gift_name, given, updated_at)
+            VALUES (?, ?, 0, ?)
         """, (place, gift_name, datetime.now().isoformat()))
+        self.conn.commit()
+
+    def mark_gift_given(self, place):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE gifts SET given = 1 WHERE place = ?", (place,))
         self.conn.commit()
 
     def remove_gift(self, place):
@@ -264,7 +361,7 @@ class Database:
 
     def get_gifts(self):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT place, gift_name FROM gifts ORDER BY place ASC")
+        cursor.execute("SELECT place, gift_name, given FROM gifts ORDER BY place ASC")
         return cursor.fetchall()
 
     def get_gift_top_limit(self):
@@ -290,7 +387,6 @@ class Database:
         return result[0] if result else None
 
     def reset_contest(self):
-        """Konkursni tugatadi: barcha referallar o'chiriladi, users.referrer_id NULL qilinadi"""
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM referrals")
         cursor.execute("UPDATE users SET referrer_id = NULL")
