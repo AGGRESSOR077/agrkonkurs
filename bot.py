@@ -1,4 +1,3 @@
-cat > /home/claude/referral_bot/bot.py << 'PYEOF'
 import logging
 import asyncio
 from io import BytesIO
