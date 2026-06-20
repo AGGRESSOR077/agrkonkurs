@@ -87,6 +87,19 @@ class Database:
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('gift_top_limit', '10')")
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('stat_top_limit', '20')")
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS winners (
+                place INTEGER,
+                user_id INTEGER,
+                full_name TEXT,
+                username TEXT,
+                pubg_id TEXT,
+                ref_count INTEGER,
+                gift_name TEXT,
+                marked_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         self.conn.commit()
 
     # ========== USERS ==========
@@ -157,13 +170,14 @@ class Database:
         return cursor.fetchall()
 
     def get_top_users(self, limit=20):
-        """Faqat kamida 1 ta faol referali bor odamlarni qaytaradi"""
+        """Faqat 24 soatdan o'tgan, faol referali bor odamlarni qaytaradi"""
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT u.user_id, u.full_name, u.username, u.pubg_id,
                    COUNT(r.id) as ref_count
             FROM users u
             INNER JOIN referrals r ON r.referrer_id = u.user_id AND r.is_active = 1
+                AND datetime(r.created_at) <= datetime('now', '-1 day')
             GROUP BY u.user_id
             HAVING ref_count > 0
             ORDER BY ref_count DESC
@@ -189,6 +203,7 @@ class Database:
                 SELECT user_id, ROW_NUMBER() OVER (ORDER BY COUNT(r.id) DESC) as rank
                 FROM users u
                 LEFT JOIN referrals r ON r.referrer_id = u.user_id AND r.is_active = 1
+                    AND datetime(r.created_at) <= datetime('now', '-1 day')
                 GROUP BY u.user_id
             ) WHERE user_id = ?
         """, (user_id,))
@@ -232,9 +247,38 @@ class Database:
         self.deactivate_referral(referrer_id, referred_id)
 
     def get_referral_count(self, user_id):
+        """Faqat 24 soatdan o'tgan, faol referallarni sanaydi"""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = ? AND is_active = 1", (user_id,))
+        cursor.execute("""
+            SELECT COUNT(*) FROM referrals
+            WHERE referrer_id = ? AND is_active = 1
+            AND datetime(created_at) <= datetime('now', '-1 day')
+        """, (user_id,))
         return cursor.fetchone()[0]
+
+    def get_pending_referral_count(self, user_id):
+        """24 soat kutish bosqichida turgan referallar soni"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM referrals
+            WHERE referrer_id = ? AND is_active = 1
+            AND datetime(created_at) > datetime('now', '-1 day')
+        """, (user_id,))
+        return cursor.fetchone()[0]
+
+    def get_referral_history(self, user_id, limit=50):
+        """Kim, qachon taklif qilingani"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT u.full_name, r.created_at, r.is_active,
+                   (datetime(r.created_at) <= datetime('now', '-1 day')) as confirmed
+            FROM referrals r
+            JOIN users u ON u.user_id = r.referred_id
+            WHERE r.referrer_id = ?
+            ORDER BY r.created_at DESC
+            LIMIT ?
+        """, (user_id, limit))
+        return cursor.fetchall()
 
     def get_referrer_of(self, user_id):
         cursor = self.conn.cursor()
@@ -322,3 +366,26 @@ class Database:
         cursor.execute("DELETE FROM settings WHERE key = 'contest_end_date'")
         cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('gift_top_limit', '10')")
         self.conn.commit()
+
+    # ========== WINNERS ==========
+
+    def mark_winners(self):
+        """Joriy Top N ni g'oliblar sifatida saqlaydi (sovgalar bilan)"""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM winners")
+        gifts = dict(self.get_gifts())
+        top_limit = self.get_gift_top_limit()
+        top_users = self.get_top_users(top_limit)
+        for i, (uid, name, uname, pubg_id, ref_count) in enumerate(top_users, 1):
+            gift_name = gifts.get(i, "—")
+            cursor.execute("""
+                INSERT INTO winners (place, user_id, full_name, username, pubg_id, ref_count, gift_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (i, uid, name, uname, pubg_id, ref_count, gift_name))
+        self.conn.commit()
+        return len(top_users)
+
+    def get_winners(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT place, full_name, username, pubg_id, ref_count, gift_name FROM winners ORDER BY place ASC")
+        return cursor.fetchall()
