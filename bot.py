@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery,
     ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
-    BufferedInputFile
+    BufferedInputFile, WebAppInfo
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -16,6 +16,7 @@ from database import Database
 
 BOT_TOKEN = "8935442087:AAEkbThT6uMQQqW_LkiK6P0PV5q4QuxlV0o"
 ADMIN_ID = 7808709581
+WEBAPP_URL = "https://your-domain.com"  # ⚠️ Bu yerga Web App joylashgan haqiqiy HTTPS manzilni yozing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class AdminStates(StatesGroup):
 
 def main_reply_keyboard(is_admin=False):
     buttons = [
+        [KeyboardButton(text="🕹 Konkurs Markazi", web_app=WebAppInfo(url=WEBAPP_URL))],
         [KeyboardButton(text="🔗 Mening Referal linkım"), KeyboardButton(text="📊 Statistika")],
         [KeyboardButton(text="👤 Mening profilım"), KeyboardButton(text="🎁 Sovgalar")],
         [KeyboardButton(text="📜 Referallarim tarixi")],
