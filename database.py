@@ -117,6 +117,11 @@ class Database:
         cursor.execute("UPDATE users SET phone = ? WHERE user_id = ?", (phone, user_id))
         self.conn.commit()
 
+    def update_pubg_id(self, user_id, pubg_id):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET pubg_id = ? WHERE user_id = ?", (pubg_id, user_id))
+        self.conn.commit()
+
     def get_user(self, user_id):
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
