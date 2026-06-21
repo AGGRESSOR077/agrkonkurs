@@ -479,7 +479,7 @@ async function init(){
 
     if(!data.registered){
       document.getElementById('loader').innerHTML =
-        '<div class="empty-state"><div class="icon">📲</div><p>Ro\\'yxatdan o\\'tish uchun avval botga<br><b>/start</b> yozing</p></div>';
+        '<div class="empty-state"><div class="icon">📲</div><p>Ro\'yxatdan o\'tish uchun avval botga<br><b>/start</b> yozing</p></div>';
       return;
     }
 
@@ -496,7 +496,7 @@ async function init(){
     loadRefLink();
   }catch(e){
     document.getElementById('loader').innerHTML =
-      '<div class="empty-state"><div class="icon">⚠️</div><p>Ulanishda xatolik.<br>Qaytadan urinib ko\\'ring.</p></div>';
+      '<div class="empty-state"><div class="icon">⚠️</div><p>Ulanishda xatolik.<br>Qaytadan urinib ko\'ring.</p></div>';
   }
 }
 
@@ -514,10 +514,10 @@ function renderHome(data){
 
   if(s.referral_count === 0){
     rankEl.innerHTML = '—';
-    tagEl.textContent = 'Hali reytingda yo\\'q';
+    tagEl.textContent = 'Hali reytingda yo\'q';
     tagEl.className = 'hero-tag tag-out';
     dial.style.strokeDashoffset = CIRC;
-    document.getElementById('statNeeded').textContent = '🎯 Birinchi referalingizni qo\\'shing va reytingga kiring!';
+    document.getElementById('statNeeded').textContent = '🎯 Birinchi referalingizni qo\'shing va reytingga kiring!';
   } else {
     rankEl.innerHTML = '#' + s.rank;
     if(s.in_gift_zone){
@@ -526,7 +526,7 @@ function renderHome(data){
       dial.style.strokeDashoffset = 0;
       document.getElementById('statNeeded').textContent = '✅ Siz hozir sovrin oluvchilar qatorida!';
     } else {
-      tagEl.textContent = '#' + s.rank + ' o\\'rin';
+      tagEl.textContent = '#' + s.rank + ' o\'rin';
       tagEl.className = 'hero-tag tag-out';
       const progress = Math.max(0, 1 - (s.needed_for_gift / (s.gift_limit + s.needed_for_gift)));
       dial.style.strokeDashoffset = CIRC - (CIRC * Math.min(progress, 0.95));
@@ -563,7 +563,7 @@ async function loadLeaderboard(){
   document.getElementById('topTitle').textContent = `Top ${data.limit} Reyting`;
 
   if(data.leaderboard.length === 0){
-    el.innerHTML = '<div class="empty-state"><div class="icon">🎯</div><p>Hali hech kim referal qo\\'shmagan.<br>Birinchi bo\\'ling!</p></div>';
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎯</div><p>Hali hech kim referal qo\'shmagan.<br>Birinchi bo\'ling!</p></div>';
     return;
   }
   const myId = STATE.me?.user?.id;
@@ -599,7 +599,7 @@ async function loadGifts(){
   }
 
   if(data.gifts.length === 0){
-    el.innerHTML = '<div class="empty-state"><div class="icon">🎁</div><p>Sovrinlar hali e\\'lon qilinmagan.<br>Tez kunda!</p></div>';
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎁</div><p>Sovrinlar hali e\'lon qilinmagan.<br>Tez kunda!</p></div>';
     return;
   }
   const medals = {1:'🥇',2:'🥈',3:'🥉'};
@@ -677,7 +677,7 @@ async function loadAdminChannels(){
   const data = await adminFetch('/api/admin/channels');
   const el = document.getElementById('adminChannelsList');
   if(data.channels.length === 0){
-    el.innerHTML = '<div class="muted">Kanallar qo\\'shilmagan</div>';
+    el.innerHTML = '<div class="muted">Kanallar qo\'shilmagan</div>';
     return;
   }
   el.innerHTML = data.channels.map(c => `
@@ -714,7 +714,7 @@ async function loadAdminGifts(){
   const gdata = await gres.json();
   const el = document.getElementById('adminGiftsList');
   if(gdata.gifts.length === 0){
-    el.innerHTML = '<div class="muted">Sovrinlar yo\\'q</div>';
+    el.innerHTML = '<div class="muted">Sovrinlar yo\'q</div>';
     return;
   }
   el.innerHTML = gdata.gifts.map(g => `
@@ -784,7 +784,7 @@ async function loadAdminUsers(){
   document.getElementById('userCountLbl').textContent = data.users.length;
   const el = document.getElementById('adminUsersList');
   if(data.users.length === 0){
-    el.innerHTML = '<div class="muted">Foydalanuvchilar yo\\'q</div>';
+    el.innerHTML = '<div class="muted">Foydalanuvchilar yo\'q</div>';
     return;
   }
   // faqat oxirgi 50 tasini ko'rsatamiz (performance)
@@ -794,7 +794,7 @@ async function loadAdminUsers(){
         <span class="user-row-name">${escapeHtml(u.name)} ${u.banned ? '<span class="badge-ban">BAN</span>' : ''}</span>
         <span class="lb-count" style="font-size:13px">${u.ref_count}</span>
       </div>
-      <div class="user-row-meta">${u.username ? '@'+u.username : '—'} · 🎮 ${u.pubg_id} · 📱 ${u.phone || 'Yo\\'q'}</div>
+      <div class="user-row-meta">${u.username ? '@'+u.username : '—'} · 🎮 ${u.pubg_id} · 📱 ${u.phone || 'Yo\'q'}</div>
     </div>
   `).join('') + (data.users.length > 50 ? `<div class="muted" style="text-align:center;padding:10px">... va yana ${data.users.length-50} ta. To'liq ro'yxat uchun botdagi Excel export'dan foydalaning.</div>` : '');
 }
@@ -809,7 +809,7 @@ async function loadAdminWinners(){
   const data = await adminFetch('/api/admin/winners');
   const el = document.getElementById('adminWinnersList');
   if(data.winners.length === 0){
-    el.innerHTML = '<div class="muted">Hali g\\'oliblar belgilanmagan</div>';
+    el.innerHTML = '<div class="muted">Hali g\'oliblar belgilanmagan</div>';
     return;
   }
   const medals = {1:'🥇',2:'🥈',3:'🥉'};
