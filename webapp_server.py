@@ -7,8 +7,10 @@ import hmac
 import json
 from urllib.parse import parse_qsl, unquote
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
+from io import BytesIO
+from openpyxl import Workbook
 
 from database import Database
 
@@ -139,6 +141,41 @@ def referral_history():
     return jsonify({"history": result})
 
 
+def is_valid_pubg_id(pubg_id: str) -> bool:
+    """Kamida 7 xona, 5 yoki 6 bilan boshlanishi kerak"""
+    return (
+        isinstance(pubg_id, str)
+        and pubg_id.isdigit()
+        and len(pubg_id) >= 7
+        and pubg_id[0] in ("5", "6")
+    )
+
+
+@app.route("/api/pubg-id", methods=["POST"])
+def set_pubg_id():
+    """Foydalanuvchi Web App ichida ixtiyoriy ravishda PUBG ID qo'shadi/yangilaydi"""
+    tg_user = get_user_from_request()
+    if not tg_user:
+        return jsonify({"error": "unauthorized"}), 401
+
+    user_id = tg_user["id"]
+    user = db.get_user(user_id)
+    if not user:
+        return jsonify({"error": "not_registered"}), 400
+
+    data = request.get_json() or {}
+    pubg_id = str(data.get("pubg_id", "")).strip()
+
+    if not is_valid_pubg_id(pubg_id):
+        return jsonify({
+            "error": "invalid_pubg_id",
+            "message": "PUBG ID kamida 7 xonali bo'lib, 5 yoki 6 raqami bilan boshlanishi kerak"
+        }), 400
+
+    db.update_pubg_id(user_id, pubg_id)
+    return jsonify({"success": True, "pubg_id": pubg_id})
+
+
 # ===================== API: STATISTIKA / SOVGALAR =====================
 
 @app.route("/api/leaderboard", methods=["GET"])
@@ -186,16 +223,60 @@ def admin_users():
     tg_user = get_user_from_request()
     if not check_admin(tg_user):
         return jsonify({"error": "forbidden"}), 403
-    users = db.get_all_users_with_phones()
+    users = db.get_all_users_with_phones()  # eng yangi birinchi (joined_at DESC)
     result = []
-    for uid, name, uname, pubg_id, phone in users:
+    for uid, name, uname, pubg_id, phone in users[:3]:
+        user_full = db.get_user(uid)
+        joined_at = user_full[7] if user_full else None
         result.append({
-            "id": uid, "name": name, "username": uname,
+            "id": uid,
+            "telegram_id": uid,
+            "name": name, "username": uname,
             "pubg_id": pubg_id, "phone": phone,
             "ref_count": db.get_referral_count(uid),
             "banned": db.is_banned(uid),
+            "joined_at": joined_at,
         })
-    return jsonify({"users": result})
+    return jsonify({"users": result, "total_count": len(users)})
+
+
+@app.route("/api/admin/users/export", methods=["GET"])
+def admin_export_users():
+    """Hamma foydalanuvchilarni Excel fayl qilib to'g'ridan-to'g'ri yuklab beradi"""
+    tg_user = get_user_from_request()
+    if not check_admin(tg_user):
+        return jsonify({"error": "forbidden"}), 403
+
+    users = db.get_all_users_with_phones()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Foydalanuvchilar"
+    ws.append(["№", "Telegram ID", "Ism", "Username", "PUBG ID", "Telefon", "Referallar soni", "Reyting"])
+
+    for i, (uid, name, uname, pubg_id, phone) in enumerate(users, 1):
+        ref_count = db.get_referral_count(uid)
+        rank = db.get_user_rank(uid) if ref_count > 0 else "—"
+        ws.append([
+            i, uid, name, f"@{uname}" if uname else "—",
+            pubg_id if pubg_id else "Kiritilmagan",
+            phone if phone else "Yo'q", ref_count, rank
+        ])
+
+    for col in ws.columns:
+        max_len = max((len(str(c.value)) for c in col if c.value), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 3, 40)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name="foydalanuvchilar.xlsx"
+    )
 
 
 @app.route("/api/admin/channels", methods=["GET"])
