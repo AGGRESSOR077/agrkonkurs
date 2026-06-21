@@ -51,30 +51,17 @@ class AdminStates(StatesGroup):
 # ===================== KEYBOARDS =====================
 
 def main_reply_keyboard(is_admin=False):
-    buttons = [
-        [KeyboardButton(text="🕹 Konkurs Markazi", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [KeyboardButton(text="🔗 Mening Referal linkım"), KeyboardButton(text="📊 Statistika")],
-        [KeyboardButton(text="👤 Mening profilım"), KeyboardButton(text="🎁 Sovgalar")],
-        [KeyboardButton(text="📜 Referallarim tarixi")],
-    ]
-    if is_admin:
-        buttons.append([KeyboardButton(text="⚙️ Admin Panel")])
-    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    """
+    Ro'yxatdan o'tgan foydalanuvchi uchun maxsus pastki tugmalar endi kerak emas —
+    hammasi Menu Button orqali ochiladigan Web App ichida.
+    Shunchaki klaviaturani tozalaymiz.
+    """
+    return ReplyKeyboardRemove()
 
 
 def admin_reply_keyboard():
-    buttons = [
-        [KeyboardButton(text="➕ Kanal qo'shish"), KeyboardButton(text="➖ Kanal o'chirish")],
-        [KeyboardButton(text="📋 Kanallar ro'yxati"), KeyboardButton(text="📊 Bot statistikasi")],
-        [KeyboardButton(text="👤 Foydalanuvchilar raqamlari"), KeyboardButton(text="📥 Excel yuklab olish")],
-        [KeyboardButton(text="🚫 Ban / Unban"), KeyboardButton(text="🔍 Foydalanuvchi qidirish")],
-        [KeyboardButton(text="📨 Foydalanuvchiga xabar"), KeyboardButton(text="📢 Hammaga xabar")],
-        [KeyboardButton(text="🎁 Sovgalarni boshqarish"), KeyboardButton(text="📈 Statistika top sonini sozlash")],
-        [KeyboardButton(text="🏆 G'oliblarni belgilash"), KeyboardButton(text="🏅 G'oliblar ro'yxati")],
-        [KeyboardButton(text="🏁 Konkursni tugatish")],
-        [KeyboardButton(text="🔙 Asosiy menyu")],
-    ]
-    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    """Admin paneli ham endi Web App ichida — bu funksiya endi ishlatilmaydi, lekin xato bermasligi uchun qoldirildi."""
+    return ReplyKeyboardRemove()
 
 
 def phone_keyboard():
@@ -237,8 +224,9 @@ async def start_handler(message: types.Message, state: FSMContext):
         return
 
     await message.answer(
-        f"👋 Xush kelibsiz, <b>{full_name}</b>!",
-        reply_markup=main_reply_keyboard(user_id == ADMIN_ID),
+        f"👋 Xush kelibsiz, <b>{full_name}</b>!\n\n"
+        f"🎮 Konkurs holatini, reytingni va sovrinlarni ko'rish uchun pastdagi "
+        f"<b>chap burchakdagi «🎮 Konkurs»</b> tugmasini bosing!",
         parse_mode="HTML"
     )
 
@@ -313,8 +301,11 @@ async def phone_handler(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer(
-        "✅ Ro'yxatdan muvaffaqiyatli o'tdingiz! Xush kelibsiz! 🎉",
-        reply_markup=main_reply_keyboard(user_id == ADMIN_ID)
+        "✅ Ro'yxatdan muvaffaqiyatli o'tdingiz! Xush kelibsiz! 🎉\n\n"
+        "🎮 Konkurs holatini, reytingni va sovrinlarni ko'rish uchun pastdagi "
+        "<b>chap burchakdagi «🎮 Konkurs»</b> tugmasini bosing!",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardRemove()
     )
 
 
