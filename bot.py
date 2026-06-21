@@ -2,7 +2,7 @@ import logging
 import asyncio
 from io import BytesIO
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery,
     ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
@@ -29,7 +29,6 @@ db = Database()
 # ===================== STATES =====================
 
 class RegisterStates(StatesGroup):
-    waiting_pubg_id = State()
     waiting_phone = State()
 
 class AdminStates(StatesGroup):
@@ -129,7 +128,7 @@ async def guard(message: types.Message) -> bool:
     if not user:
         await message.answer(
             "⚠️ Avval ro'yxatdan o'ting!\n\n"
-            "🎮 <b>PUBG ID</b> ingizni yuboring:",
+            "/start buyrug'ini yuboring.",
             parse_mode="HTML",
             reply_markup=ReplyKeyboardRemove()
         )
@@ -191,13 +190,22 @@ async def start_handler(message: types.Message, state: FSMContext):
     # Yangi foydalanuvchi
     if not user:
         await state.update_data(referrer_id=referrer_id, full_name=full_name, username=username)
+        not_subscribed = await check_subscriptions(user_id)
+        if not_subscribed and user_id != ADMIN_ID:
+            await message.answer(
+                f"👋 Salom, <b>{full_name}</b>!\n\n"
+                "⚠️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:",
+                parse_mode="HTML",
+                reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub_then_phone")
+            )
+            return
         await message.answer(
             f"👋 Salom, <b>{full_name}</b>!\n\n"
-            "🎮 <b>PUBG ID</b> ingizni yuboring:",
+            "📱 Ro'yxatdan o'tish uchun telefon raqamingizni yuboring:",
             parse_mode="HTML",
-            reply_markup=ReplyKeyboardRemove()
+            reply_markup=phone_keyboard()
         )
-        await state.set_state(RegisterStates.waiting_pubg_id)
+        await state.set_state(RegisterStates.waiting_phone)
         return
 
     # Telefon yo'q — davom ettirish
@@ -231,40 +239,6 @@ async def start_handler(message: types.Message, state: FSMContext):
     )
 
 
-# ===================== REGISTER: PUBG ID =====================
-
-@dp.message(RegisterStates.waiting_pubg_id)
-async def pubg_id_handler(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    pubg_id = message.text.strip()
-
-    if not is_valid_pubg_id(pubg_id):
-        await message.answer(
-            "❌ Noto'g'ri PUBG ID! Qaytadan yuboring:"
-        )
-        return
-
-    data = await state.get_data()
-    referrer_id = data.get("referrer_id")
-    full_name = data.get("full_name", message.from_user.full_name)
-    username = data.get("username", message.from_user.username or "")
-
-    db.add_user(user_id, full_name, username, pubg_id, referrer_id)
-    await state.update_data(referrer_id=referrer_id, pubg_id=pubg_id)
-
-    not_subscribed = await check_subscriptions(user_id)
-    if not_subscribed and user_id != ADMIN_ID:
-        await message.answer(
-            "✅ PUBG ID saqlandi!\n\n"
-            "⚠️ Endi quyidagi kanallarga obuna bo'ling:",
-            reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub_then_phone")
-        )
-        return
-
-    await message.answer("📱 Iltimos, telefon raqamingizni yuboring:", reply_markup=phone_keyboard())
-    await state.set_state(RegisterStates.waiting_phone)
-
-
 # ===================== REGISTER: PHONE =====================
 
 @dp.message(RegisterStates.waiting_phone, F.contact)
@@ -273,6 +247,8 @@ async def phone_handler(message: types.Message, state: FSMContext):
     phone = message.contact.phone_number
     data = await state.get_data()
     referrer_id = data.get("referrer_id")
+    full_name = data.get("full_name", message.from_user.full_name)
+    username = data.get("username", message.from_user.username or "")
 
     # Fake referal himoyasi: bir telefon = bir akkaunt
     existing = db.get_user_by_phone(phone)
@@ -285,6 +261,10 @@ async def phone_handler(message: types.Message, state: FSMContext):
         await state.clear()
         return
 
+    # Foydalanuvchini bazaga yozamiz (PUBG ID hali bo'sh — keyin Web App orqali qo'shiladi)
+    user = db.get_user(user_id)
+    if not user:
+        db.add_user(user_id, full_name, username, None, referrer_id)
     db.update_phone(user_id, phone)
 
     if referrer_id and db.get_user(referrer_id):
@@ -518,24 +498,22 @@ async def bot_stats(message: types.Message):
 
 
 # ---- Excel export ----
-@dp.message(F.text == "📥 Excel yuklab olish")
-async def export_excel(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    await message.answer("⏳ Excel fayl tayyorlanmoqda...")
 
+async def generate_and_send_excel(chat_id: int):
+    """Excel faylni tayyorlab, ko'rsatilgan chat_id ga yuboradi"""
     users = db.get_all_users_with_phones()
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Foydalanuvchilar"
-    ws.append(["№", "Ism", "Username", "PUBG ID", "Telefon", "Referallar soni", "Reyting"])
+    ws.append(["№", "Telegram ID", "Ism", "Username", "PUBG ID", "Telefon", "Referallar soni", "Reyting"])
 
     for i, (uid, name, uname, pubg_id, phone) in enumerate(users, 1):
         ref_count = db.get_referral_count(uid)
         rank = db.get_user_rank(uid) if ref_count > 0 else "—"
         ws.append([
-            i, name, f"@{uname}" if uname else "—", pubg_id,
+            i, uid, name, f"@{uname}" if uname else "—",
+            pubg_id if pubg_id else "Kiritilmagan",
             phone if phone else "Yo'q", ref_count, rank
         ])
 
@@ -549,7 +527,23 @@ async def export_excel(message: types.Message):
     buffer.seek(0)
 
     file = BufferedInputFile(buffer.read(), filename="foydalanuvchilar.xlsx")
-    await message.answer_document(file, caption=f"📥 Jami {len(users)} ta foydalanuvchi")
+    await bot.send_document(chat_id, file, caption=f"📥 Jami {len(users)} ta foydalanuvchi")
+
+
+@dp.message(Command("export"))
+async def export_excel_command(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("⏳ Excel fayl tayyorlanmoqda...")
+    await generate_and_send_excel(message.from_user.id)
+
+
+@dp.message(F.text == "📥 Excel yuklab olish")
+async def export_excel(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer("⏳ Excel fayl tayyorlanmoqda...")
+    await generate_and_send_excel(message.from_user.id)
 
 
 # ---- Statistika top sonini sozlash ----
