@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Konkurs Markazi</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-0:#0A0D10;
+  --bg-1:#11161B;
+  --bg-2:#171D24;
+  --line:#232B33;
+  --gold:#D4AF37;
+  --gold-soft:#8A7232;
+  --acid:#3CF073;
+  --acid-dim:#1E5E38;
+  --danger:#FF4B4B;
+  --text-0:#F2F4F6;
+  --text-1:#9AA7B2;
+  --text-2:#5C6B76;
+  --display: 'Rajdhani', sans-serif;
+  --body: 'Inter', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{
+  background:var(--bg-0);
+  color:var(--text-0);
+  font-family:var(--body);
+  min-height:100vh;
+  overscroll-behavior:none;
+}
+body{
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(212,175,55,0.06), transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(60,240,115,0.05), transparent 40%);
+}
+#app{max-width:560px;margin:0 auto;padding:14px 14px 100px;}
+
+/* ===== TOP HUD BAR ===== */
+.hud-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 4px 18px;
+}
+.hud-id{
+  font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:2px;
+  color:var(--text-2);text-transform:uppercase;
+}
+.hud-id b{color:var(--gold);}
+.hud-status{
+  display:flex;align-items:center;gap:6px;font-size:11px;color:var(--acid);
+  font-family:var(--display);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--acid);box-shadow:0 0 8px var(--acid);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+/* ===== LOADING ===== */
+.loader-screen{
+  position:fixed;inset:0;background:var(--bg-0);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;z-index:999;
+}
+.loader-ring{
+  width:54px;height:54px;border-radius:50%;
+  border:3px solid var(--line);border-top-color:var(--gold);
+  animation:spin 0.9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loader-text{font-family:var(--display);font-weight:600;letter-spacing:3px;color:var(--text-2);font-size:12px;text-transform:uppercase;}
+
+/* ===== CARD ===== */
+.card{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:12px;
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+  background:linear-gradient(180deg, var(--gold), transparent);
+}
+
+/* ===== HERO: rank dial ===== */
+.hero{
+  display:flex;align-items:center;gap:18px;padding:22px 18px;
+}
+.dial{
+  position:relative;width:104px;height:104px;flex-shrink:0;
+}
+.dial svg{transform:rotate(-90deg);width:100%;height:100%;}
+.dial-track{fill:none;stroke:var(--line);stroke-width:7;}
+.dial-fill{fill:none;stroke:var(--gold);stroke-width:7;stroke-linecap:round;
+  filter:drop-shadow(0 0 6px rgba(212,175,55,.5));
+  transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);}
+.dial-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.dial-rank{font-family:var(--display);font-weight:700;font-size:26px;line-height:1;color:var(--text-0);}
+.dial-rank span{font-size:12px;color:var(--text-2);font-weight:600;}
+.hero-info{flex:1;min-width:0;}
+.hero-label{font-family:var(--display);font-size:11px;letter-spacing:2px;color:var(--text-2);text-transform:uppercase;font-weight:600;margin-bottom:4px;}
+.hero-name{font-size:17px;font-weight:700;color:var(--text-0);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;
+  padding:4px 10px;border-radius:20px;text-transform:uppercase;
+}
+.tag-zone{background:rgba(60,240,115,.12);color:var(--acid);border:1px solid rgba(60,240,115,.3);}
+.tag-out{background:rgba(154,167,178,.1);color:var(--text-1);border:1px solid var(--line);}
+
+/* ===== STAT GRID ===== */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.stat-box{
+  background:var(--bg-0);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;
+}
+.stat-num{font-family:var(--display);font-weight:700;font-size:22px;color:var(--gold);line-height:1;}
+.stat-num.acid{color:var(--acid);}
+.stat-lbl{font-size:10.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-weight:600;}
+
+/* ===== SECTION TITLE ===== */
+.section-title{
+  display:flex;align-items:center;gap:8px;margin:24px 0 10px;padding:0 2px;
+}
+.section-title .ln{flex:1;height:1px;background:var(--line);}
+.section-title h2{
+  font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text-1);white-space:nowrap;
+}
+
+/* ===== REFERRAL LINK ===== */
+.link-box{
+  background:var(--bg-0);border:1px dashed var(--gold-soft);border-radius:10px;
+  padding:12px 14px;font-family:monospace;font-size:11.5px;color:var(--text-1);
+  word-break:break-all;margin-bottom:10px;
+}
+.btn{
+  width:100%;padding:13px;border-radius:10px;border:none;
+  font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .15s, opacity .15s;
+}
+.btn:active{transform:scale(.97);}
+.btn-gold{background:linear-gradient(135deg, var(--gold), #B8923E);color:#1A1408;}
+.btn-ghost{background:var(--bg-2);color:var(--text-0);border:1px solid var(--line);}
+.btn-danger{background:rgba(255,75,75,.12);color:var(--danger);border:1px solid rgba(255,75,75,.3);}
+.btn-acid{background:linear-gradient(135deg, var(--acid), #1E9C4E);color:#06210F;}
+.btn-row{display:flex;gap:8px;}
+.btn-row .btn{flex:1;}
+
+/* ===== LEADERBOARD ===== */
+.lb-row{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;
+  background:var(--bg-1);border:1px solid var(--line);border-radius:10px;margin-bottom:7px;
+}
+.lb-row.me{border-color:var(--gold);background:rgba(212,175,55,.07);}
+.lb-rank{
+  font-family:var(--display);font-weight:700;font-size:15px;width:30px;text-align:center;
+  color:var(--text-2);flex-shrink:0;
+}
+.lb-rank.top1{color:#FFD700;font-size:19px;}
+.lb-rank.top2{color:#C7CDD3;font-size:17px;}
+.lb-rank.top3{color:#CD7F32;font-size:17px;}
+.lb-info{flex:1;min-width:0;}
+.lb-name{font-size:13.5px;font-weight:600;color:var(--text-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-sub{font-size:11px;color:var(--text-2);font-family:monospace;margin-top:1px;}
+.lb-count{font-family:var(--display);font-weight:700;font-size:16px;color:var(--acid);flex-shrink:0;}
+
+/* ===== GIFT LIST ===== */
+.gift-row{
+  display:flex;align-items:center;gap:12px;padding:13px;
+  background:var(--bg-1);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;
+}
+.gift-medal{font-size:24px;width:36px;text-align:center;flex-shrink:0;}
+.gift-place{font-family:var(--display);font-size:10px;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;font-weight:700;}
+.gift-name{font-size:14px;font-weight:600;color:var(--text-0);margin-top:2px;}
+.countdown-box{
+  background:linear-gradient(135deg, rgba(255,75,75,.1), rgba(212,175,55,.06));
+  border:1px solid rgba(255,75,75,.25);border-radius:12px;padding:14px 16px;
+  text-align:center;margin-bottom:14px;
+}
+.countdown-lbl{font-family:var(--display);font-size:10.5px;letter-spacing:2px;color:var(--text-1);text-transform:uppercase;margin-bottom:4px;}
+.countdown-val{font-family:var(--display);font-weight:700;font-size:16px;color:var(--danger);}
+
+/* ===== HISTORY ===== */
+.hist-row{
+  display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);
+}
+.hist-row:last-child{border:none;}
+.hist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hist-dot.ok{background:var(--acid);box-shadow:0 0 6px var(--acid);}
+.hist-dot.pending{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+.hist-dot.left{background:var(--text-2);}
+.hist-info{flex:1;min-width:0;}
+.hist-name{font-size:13px;font-weight:600;color:var(--text-0);}
+.hist-date{font-size:10.5px;color:var(--text-2);}
+.hist-status{font-family:var(--display);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+
+/* ===== TABS ===== */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(10,13,16,.92);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+  display:flex;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  z-index:100;max-width:560px;margin:0 auto;
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 4px;border-radius:10px;color:var(--text-2);transition:color .15s;
+}
+.tab.active{color:var(--gold);}
+.tab svg{width:21px;height:21px;}
+.tab-lbl{font-family:var(--display);font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+
+/* ===== ADMIN ===== */
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.admin-card{
+  background:var(--bg-1);border:1px solid var(--line);border-radius:12px;
+  padding:14px;text-align:center;
+}
+.admin-num{font-family:var(--display);font-weight:700;font-size:24px;color:var(--gold);}
+.admin-lbl{font-size:10px;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;margin-top:3px;}
+
+.input{
+  width:100%;background:var(--bg-0);border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;color:var(--text-0);font-size:14px;margin-bottom:10px;font-family:var(--body);
+}
+.input:focus{outline:none;border-color:var(--gold-soft);}
+.input::placeholder{color:var(--text-2);}
+
+.user-row{
+  background:var(--bg-1);border:1px solid var(--line);border-radius:10px;
+  padding:11px 13px;margin-bottom:7px;
+}
+.user-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.user-row-name{font-size:13.5px;font-weight:600;color:var(--text-0);}
+.user-row-meta{font-size:10.5px;color:var(--text-2);font-family:monospace;}
+.badge-ban{font-size:9px;font-family:var(--display);font-weight:700;color:var(--danger);
+  background:rgba(255,75,75,.12);padding:2px 7px;border-radius:6px;letter-spacing:.5px;}
+
+.empty-state{
+  text-align:center;padding:50px 20px;color:var(--text-2);
+}
+.empty-state .icon{font-size:38px;margin-bottom:10px;opacity:.5;}
+.empty-state p{font-size:13px;line-height:1.5;}
+
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--bg-2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 18px;font-size:13px;font-weight:600;color:var(--text-0);
+  opacity:0;transition:all .25s;z-index:200;max-width:90%;text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--acid);color:var(--acid);}
+.toast.err{border-color:var(--danger);color:var(--danger);}
+
+.hidden{display:none !important;}
+.muted{color:var(--text-2);font-size:12.5px;line-height:1.5;}
+.mt-8{margin-top:8px;}
+.mt-14{margin-top:14px;}
+</style>
+</head>
+<body>
+
+<div class="loader-screen" id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Yuklanmoqda...</div>
+</div>
+
+<div id="app" class="hidden">
+
+  <div class="hud-bar">
+    <div class="hud-id">KONKURS <b>MARKAZI</b></div>
+    <div class="hud-status"><span class="dot"></span> JONLI</div>
+  </div>
+
+  <!-- ===== HOME TAB ===== -->
+  <div id="tab-home">
+    <div class="card hero">
+      <div class="dial">
+        <svg viewBox="0 0 104 104">
+          <circle class="dial-track" cx="52" cy="52" r="46"></circle>
+          <circle class="dial-fill" id="dialFill" cx="52" cy="52" r="46" stroke-dasharray="289" stroke-dashoffset="289"></circle>
+        </svg>
+        <div class="dial-center">
+          <div class="dial-rank" id="dialRank">—</div>
+          <span>O'RIN</span>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-label">Jangchi</div>
+        <div class="hero-name" id="heroName">—</div>
+        <div class="hero-tag tag-out" id="heroTag">Yuklanmoqda</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-num acid" id="statRefCount">0</div>
+          <div class="stat-lbl">Referallar</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statPending">0</div>
+          <div class="stat-lbl">Kutilmoqda</div>
+        </div>
+      </div>
+      <div class="muted mt-14" id="statNeeded"></div>
+    </div>
+
+    <div class="section-title"><h2>Referal Havola</h2><div class="ln"></div></div>
+    <div class="card">
+      <div class="link-box" id="refLink">yuklanmoqda...</div>
+      <div class="btn-row">
+        <button class="btn btn-gold" onclick="copyLink()">📋 Nusxalash</button>
+        <button class="btn btn-ghost" onclick="shareLink()">📤 Ulashish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOP TAB ===== -->
+  <div id="tab-top" class="hidden">
+    <div class="section-title"><h2 id="topTitle">Top Reyting</h2><div class="ln"></div></div>
+    <div id="leaderboardList"></div>
+  </div>
+
+  <!-- ===== GIFTS TAB ===== -->
+  <div id="tab-gifts" class="hidden">
+    <div id="countdownBox"></div>
+    <div class="section-title"><h2>Sovrinlar</h2><div class="ln"></div></div>
+    <div id="giftsList"></div>
+  </div>
+
+  <!-- ===== HISTORY TAB ===== -->
+  <div id="tab-history" class="hidden">
+    <div class="section-title"><h2>Referallarim Tarixi</h2><div class="ln"></div></div>
+    <div class="card" id="historyCard"></div>
+  </div>
+
+  <!-- ===== ADMIN TAB ===== -->
+  <div id="tab-admin" class="hidden">
+    <div class="section-title"><h2>Umumiy Holat</h2><div class="ln"></div></div>
+    <div class="admin-grid mt-8" id="adminStatsGrid"></div>
+
+    <div class="section-title"><h2>Kanallar</h2><div class="ln"></div></div>
+    <div class="card">
+      <div id="adminChannelsList"></div>
+      <input class="input mt-8" id="newChannelUsername" placeholder="@kanal_username">
+      <input class="input" id="newChannelName" placeholder="Kanal nomi (ko'rsatish uchun)">
+      <button class="btn btn-gold" onclick="addChannel()">➕ Kanal qo'shish</button>
+    </div>
+
+    <div class="section-title"><h2>Sozlamalar</h2><div class="ln"></div></div>
+    <div class="card">
+      <div class="muted mt-8">Statistika Top soni</div>
+      <input class="input mt-8" type="number" id="settingStatLimit" placeholder="20">
+      <div class="muted">Sovrin beriladigan o'rinlar (Top N)</div>
+      <input class="input mt-8" type="number" id="settingGiftLimit" placeholder="10">
+      <div class="muted">Konkurs tugash sanasi</div>
+      <input class="input mt-8" id="settingEndDate" placeholder="15 Iyul 2025, 20:00">
+      <button class="btn btn-gold" onclick="saveSettings()">💾 Saqlash</button>
+    </div>
+
+    <div class="section-title"><h2>Sovrinlar</h2><div class="ln"></div></div>
+    <div class="card">
+      <div id="adminGiftsList"></div>
+      <input class="input mt-8" type="number" id="newGiftPlace" placeholder="O'rin (masalan 1)">
+      <input class="input" id="newGiftName" placeholder="Sovrin nomi">
+      <button class="btn btn-gold" onclick="addGift()">🎁 Sovrin qo'shish</button>
+    </div>
+
+    <div class="section-title"><h2>Foydalanuvchi Boshqaruvi</h2><div class="ln"></div></div>
+    <div class="card">
+      <input class="input" id="banUsername" placeholder="@username">
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="banUser()">🚫 Ban</button>
+        <button class="btn btn-acid" onclick="unbanUser()">✅ Unban</button>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Foydalanuvchilar (<span id="userCountLbl">0</span>)</h2><div class="ln"></div></div>
+    <div id="adminUsersList"></div>
+
+    <div class="section-title"><h2>G'oliblar</h2><div class="ln"></div></div>
+    <div class="card">
+      <button class="btn btn-gold" onclick="markWinners()">🏆 Joriy Top'ni G'olib deb belgilash</button>
+      <div id="adminWinnersList" class="mt-14"></div>
+    </div>
+
+    <div class="section-title"><h2>Xavfli Hudud</h2><div class="ln"></div></div>
+    <div class="card">
+      <button class="btn btn-danger" onclick="resetContest()">🏁 Konkursni tugatish</button>
+      <div class="muted mt-8">Barcha referallar va sovrinlar o'chiriladi. Foydalanuvchilar saqlanadi.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="tabbar hidden" id="tabbar">
+  <div class="tab active" data-tab="home" onclick="switchTab('home')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h12a1 1 0 001-1V10"/></svg>
+    <div class="tab-lbl">Bosh</div>
+  </div>
+  <div class="tab" data-tab="top" onclick="switchTab('top')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M6 21V10M12 21V3M18 21v14"/></svg>
+    <div class="tab-lbl">Top</div>
+  </div>
+  <div class="tab" data-tab="gifts" onclick="switchTab('gifts')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+    <div class="tab-lbl">Sovrin</div>
+  </div>
+  <div class="tab" data-tab="history" onclick="switchTab('history')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3M3.05 11a9 9 0 1018-1"/></svg>
+    <div class="tab-lbl">Tarix</div>
+  </div>
+  <div class="tab hidden" data-tab="admin" id="adminTabBtn" onclick="switchTab('admin')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <div class="tab-lbl">Admin</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+let STATE = { me: null, isAdmin: false };
+const API = "";
+
+function authHeaders(){
+  return { "Content-Type": "application/json", "X-Telegram-Init-Data": tg.initData || "" };
+}
+
+function showToast(msg, type=""){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + type;
+  setTimeout(()=> t.className = "toast " + type, 2200);
+}
+
+function haptic(style="light"){
+  try{ tg.HapticFeedback.impactOccurred(style); }catch(e){}
+}
+
+// ===================== TAB SWITCHING =====================
+function switchTab(name){
+  haptic();
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+
+  if(name === 'top') loadLeaderboard();
+  if(name === 'gifts') loadGifts();
+  if(name === 'history') loadHistory();
+  if(name === 'admin') loadAdminAll();
+}
+
+// ===================== INIT =====================
+async function init(){
+  try{
+    const res = await fetch(`${API}/api/me`, { headers: authHeaders() });
+    const data = await res.json();
+    STATE.me = data;
+    STATE.isAdmin = data.is_admin;
+
+    if(data.is_banned){
+      document.getElementById('loader').innerHTML =
+        '<div class="empty-state"><div class="icon">🚫</div><p>Siz botdan bloklangansiz</p></div>';
+      return;
+    }
+
+    if(!data.registered){
+      document.getElementById('loader').innerHTML =
+        '<div class="empty-state"><div class="icon">📲</div><p>Ro\\'yxatdan o\\'tish uchun avval botga<br><b>/start</b> yozing</p></div>';
+      return;
+    }
+
+    renderHome(data);
+
+    if(STATE.isAdmin){
+      document.getElementById('adminTabBtn').classList.remove('hidden');
+    }
+
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('tabbar').classList.remove('hidden');
+
+    loadRefLink();
+  }catch(e){
+    document.getElementById('loader').innerHTML =
+      '<div class="empty-state"><div class="icon">⚠️</div><p>Ulanishda xatolik.<br>Qaytadan urinib ko\\'ring.</p></div>';
+  }
+}
+
+function renderHome(data){
+  const s = data.stats;
+  const u = data.user;
+  document.getElementById('heroName').textContent = u.full_name;
+  document.getElementById('statRefCount').textContent = s.referral_count;
+  document.getElementById('statPending').textContent = s.pending_count;
+
+  const rankEl = document.getElementById('dialRank');
+  const tagEl = document.getElementById('heroTag');
+  const dial = document.getElementById('dialFill');
+  const CIRC = 289;
+
+  if(s.referral_count === 0){
+    rankEl.innerHTML = '—';
+    tagEl.textContent = 'Hali reytingda yo\\'q';
+    tagEl.className = 'hero-tag tag-out';
+    dial.style.strokeDashoffset = CIRC;
+    document.getElementById('statNeeded').textContent = '🎯 Birinchi referalingizni qo\\'shing va reytingga kiring!';
+  } else {
+    rankEl.innerHTML = '#' + s.rank;
+    if(s.in_gift_zone){
+      tagEl.textContent = '🎉 Sovrin Zonasida';
+      tagEl.className = 'hero-tag tag-zone';
+      dial.style.strokeDashoffset = 0;
+      document.getElementById('statNeeded').textContent = '✅ Siz hozir sovrin oluvchilar qatorida!';
+    } else {
+      tagEl.textContent = '#' + s.rank + ' o\\'rin';
+      tagEl.className = 'hero-tag tag-out';
+      const progress = Math.max(0, 1 - (s.needed_for_gift / (s.gift_limit + s.needed_for_gift)));
+      dial.style.strokeDashoffset = CIRC - (CIRC * Math.min(progress, 0.95));
+      document.getElementById('statNeeded').textContent =
+        `🎯 Top ${s.gift_limit} ga kirish uchun yana ${s.needed_for_gift} kishi taklif qiling!`;
+    }
+  }
+}
+
+async function loadRefLink(){
+  const res = await fetch(`${API}/api/referral-link`, { headers: authHeaders() });
+  const data = await res.json();
+  document.getElementById('refLink').textContent = data.link;
+  STATE.link = data.link;
+}
+
+function copyLink(){
+  haptic("medium");
+  navigator.clipboard.writeText(STATE.link || "").then(()=> showToast("✅ Nusxalandi!", "ok"));
+}
+
+function shareLink(){
+  haptic("medium");
+  const url = `https://t.me/share/url?url=${encodeURIComponent(STATE.link)}&text=${encodeURIComponent("Konkursga qo'shiling! 🎮🔥")}`;
+  tg.openTelegramLink(url);
+}
+
+// ===================== LEADERBOARD =====================
+async function loadLeaderboard(){
+  const el = document.getElementById('leaderboardList');
+  el.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Yuklanmoqda...</p></div>';
+  const res = await fetch(`${API}/api/leaderboard`);
+  const data = await res.json();
+  document.getElementById('topTitle').textContent = `Top ${data.limit} Reyting`;
+
+  if(data.leaderboard.length === 0){
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎯</div><p>Hali hech kim referal qo\\'shmagan.<br>Birinchi bo\\'ling!</p></div>';
+    return;
+  }
+  const myId = STATE.me?.user?.id;
+  el.innerHTML = data.leaderboard.map(u => {
+    const rankClass = u.rank===1?'top1':u.rank===2?'top2':u.rank===3?'top3':'';
+    const medal = u.rank===1?'🥇':u.rank===2?'🥈':u.rank===3?'🥉':u.rank;
+    const isMe = myId && STATE.me.user.pubg_id === u.pubg_id;
+    return `<div class="lb-row ${isMe?'me':''}">
+      <div class="lb-rank ${rankClass}">${medal}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(u.name)}</div>
+        <div class="lb-sub">${u.username ? '@'+u.username : 'ID: '+u.pubg_id}</div>
+      </div>
+      <div class="lb-count">${u.ref_count}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== GIFTS =====================
+async function loadGifts(){
+  const el = document.getElementById('giftsList');
+  const cd = document.getElementById('countdownBox');
+  el.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Yuklanmoqda...</p></div>';
+  cd.innerHTML = '';
+  const res = await fetch(`${API}/api/gifts`);
+  const data = await res.json();
+
+  if(data.end_date){
+    cd.innerHTML = `<div class="countdown-box">
+      <div class="countdown-lbl">⏰ Konkurs Tugaydi</div>
+      <div class="countdown-val">${escapeHtml(data.end_date)}</div>
+    </div>`;
+  }
+
+  if(data.gifts.length === 0){
+    el.innerHTML = '<div class="empty-state"><div class="icon">🎁</div><p>Sovrinlar hali e\\'lon qilinmagan.<br>Tez kunda!</p></div>';
+    return;
+  }
+  const medals = {1:'🥇',2:'🥈',3:'🥉'};
+  el.innerHTML = data.gifts.map(g => `
+    <div class="gift-row">
+      <div class="gift-medal">${medals[g.place] || '🏅'}</div>
+      <div>
+        <div class="gift-place">Top ${g.place}</div>
+        <div class="gift-name">${escapeHtml(g.name)}</div>
+      </div>
+    </div>
+  `).join('') + `<div class="muted mt-14" style="text-align:center">📊 Top ${data.top_limit} ga kiring va sovringizni oling!</div>`;
+}
+
+// ===================== HISTORY =====================
+async function loadHistory(){
+  const el = document.getElementById('historyCard');
+  el.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Yuklanmoqda...</p></div>';
+  const res = await fetch(`${API}/api/history`, { headers: authHeaders() });
+  const data = await res.json();
+  if(data.history.length === 0){
+    el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>Hali hech kimni taklif qilmadingiz.<br>Referal havolangizni ulashing!</p></div>';
+    return;
+  }
+  el.innerHTML = data.history.map(h => {
+    let dotClass = 'pending', statusText = 'Kutilmoqda', statusColor = 'var(--gold)';
+    if(!h.active){ dotClass='left'; statusText='Chiqib ketgan'; statusColor='var(--text-2)'; }
+    else if(h.confirmed){ dotClass='ok'; statusText='Tasdiqlangan'; statusColor='var(--acid)'; }
+    const date = h.date.split('T')[0] || h.date;
+    return `<div class="hist-row">
+      <div class="hist-dot ${dotClass}"></div>
+      <div class="hist-info">
+        <div class="hist-name">${escapeHtml(h.name)}</div>
+        <div class="hist-date">${date}</div>
+      </div>
+      <div class="hist-status" style="color:${statusColor}">${statusText}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== ADMIN =====================
+async function adminFetch(path, options={}){
+  const res = await fetch(`${API}${path}`, {
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers||{}) }
+  });
+  if(!res.ok){
+    showToast("❌ Xatolik yuz berdi", "err");
+    throw new Error("admin fetch failed");
+  }
+  return res.json();
+}
+
+async function loadAdminAll(){
+  loadAdminStats();
+  loadAdminChannels();
+  loadAdminGifts();
+  loadAdminUsers();
+  loadAdminWinners();
+}
+
+async function loadAdminStats(){
+  const data = await adminFetch('/api/admin/stats');
+  document.getElementById('adminStatsGrid').innerHTML = `
+    <div class="admin-card"><div class="admin-num">${data.total_users}</div><div class="admin-lbl">Foydalanuvchi</div></div>
+    <div class="admin-card"><div class="admin-num">${data.total_channels}</div><div class="admin-lbl">Kanal</div></div>
+    <div class="admin-card"><div class="admin-num">${data.total_referrals}</div><div class="admin-lbl">Faol Referal</div></div>
+    <div class="admin-card"><div class="admin-num">Top ${data.gift_top_limit}</div><div class="admin-lbl">Sovrin Chegarasi</div></div>
+  `;
+  document.getElementById('settingStatLimit').value = data.stat_top_limit;
+  document.getElementById('settingGiftLimit').value = data.gift_top_limit;
+}
+
+async function loadAdminChannels(){
+  const data = await adminFetch('/api/admin/channels');
+  const el = document.getElementById('adminChannelsList');
+  if(data.channels.length === 0){
+    el.innerHTML = '<div class="muted">Kanallar qo\\'shilmagan</div>';
+    return;
+  }
+  el.innerHTML = data.channels.map(c => `
+    <div class="user-row">
+      <div class="user-row-top">
+        <span class="user-row-name">${escapeHtml(c.name)}</span>
+        <button class="btn btn-danger" style="width:auto;padding:5px 12px;font-size:11px" onclick="removeChannel('${c.username}')">O'chirish</button>
+      </div>
+      <div class="user-row-meta">${c.username}</div>
+    </div>
+  `).join('');
+}
+
+async function addChannel(){
+  const username = document.getElementById('newChannelUsername').value.trim();
+  const name = document.getElementById('newChannelName').value.trim();
+  if(!username || !name) return showToast("⚠️ Username va nom kiriting", "err");
+  await adminFetch('/api/admin/channels', { method:'POST', body: JSON.stringify({username, name}) });
+  document.getElementById('newChannelUsername').value='';
+  document.getElementById('newChannelName').value='';
+  showToast("✅ Kanal qo'shildi", "ok");
+  loadAdminChannels();
+}
+
+async function removeChannel(username){
+  await adminFetch('/api/admin/channels', { method:'DELETE', body: JSON.stringify({username}) });
+  showToast("✅ Kanal o'chirildi", "ok");
+  loadAdminChannels();
+}
+
+async function loadAdminGifts(){
+  const data = await adminFetch('/api/admin/stats'); // for limit ref not needed here
+  const gres = await fetch(`${API}/api/gifts`);
+  const gdata = await gres.json();
+  const el = document.getElementById('adminGiftsList');
+  if(gdata.gifts.length === 0){
+    el.innerHTML = '<div class="muted">Sovrinlar yo\\'q</div>';
+    return;
+  }
+  el.innerHTML = gdata.gifts.map(g => `
+    <div class="user-row">
+      <div class="user-row-top">
+        <span class="user-row-name">Top ${g.place} — ${escapeHtml(g.name)}</span>
+        <button class="btn btn-danger" style="width:auto;padding:5px 12px;font-size:11px" onclick="removeGift(${g.place})">O'chirish</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addGift(){
+  const place = document.getElementById('newGiftPlace').value.trim();
+  const name = document.getElementById('newGiftName').value.trim();
+  if(!place || !name) return showToast("⚠️ O'rin va nom kiriting", "err");
+  await adminFetch('/api/admin/gifts', { method:'POST', body: JSON.stringify({place: parseInt(place), name}) });
+  document.getElementById('newGiftPlace').value='';
+  document.getElementById('newGiftName').value='';
+  showToast("✅ Sovrin saqlandi", "ok");
+  loadAdminGifts();
+}
+
+async function removeGift(place){
+  await adminFetch('/api/admin/gifts', { method:'DELETE', body: JSON.stringify({place}) });
+  showToast("✅ Sovrin o'chirildi", "ok");
+  loadAdminGifts();
+}
+
+async function saveSettings(){
+  const stat_top_limit = document.getElementById('settingStatLimit').value;
+  const gift_top_limit = document.getElementById('settingGiftLimit').value;
+  const contest_end_date = document.getElementById('settingEndDate').value.trim();
+  const body = {};
+  if(stat_top_limit) body.stat_top_limit = parseInt(stat_top_limit);
+  if(gift_top_limit) body.gift_top_limit = parseInt(gift_top_limit);
+  if(contest_end_date) body.contest_end_date = contest_end_date;
+  await adminFetch('/api/admin/settings', { method:'POST', body: JSON.stringify(body) });
+  showToast("✅ Sozlamalar saqlandi", "ok");
+  loadAdminStats();
+}
+
+async function banUser(){
+  const username = document.getElementById('banUsername').value.trim().replace('@','');
+  if(!username) return showToast("⚠️ Username kiriting", "err");
+  try{
+    await adminFetch('/api/admin/ban', { method:'POST', body: JSON.stringify({username}) });
+    showToast("🚫 Foydalanuvchi ban qilindi", "ok");
+    document.getElementById('banUsername').value='';
+    loadAdminUsers();
+  }catch(e){}
+}
+
+async function unbanUser(){
+  const username = document.getElementById('banUsername').value.trim().replace('@','');
+  if(!username) return showToast("⚠️ Username kiriting", "err");
+  try{
+    await adminFetch('/api/admin/unban', { method:'POST', body: JSON.stringify({username}) });
+    showToast("✅ Ban olib tashlandi", "ok");
+    document.getElementById('banUsername').value='';
+    loadAdminUsers();
+  }catch(e){}
+}
+
+async function loadAdminUsers(){
+  const data = await adminFetch('/api/admin/users');
+  document.getElementById('userCountLbl').textContent = data.users.length;
+  const el = document.getElementById('adminUsersList');
+  if(data.users.length === 0){
+    el.innerHTML = '<div class="muted">Foydalanuvchilar yo\\'q</div>';
+    return;
+  }
+  // faqat oxirgi 50 tasini ko'rsatamiz (performance)
+  el.innerHTML = data.users.slice(0,50).map(u => `
+    <div class="user-row">
+      <div class="user-row-top">
+        <span class="user-row-name">${escapeHtml(u.name)} ${u.banned ? '<span class="badge-ban">BAN</span>' : ''}</span>
+        <span class="lb-count" style="font-size:13px">${u.ref_count}</span>
+      </div>
+      <div class="user-row-meta">${u.username ? '@'+u.username : '—'} · 🎮 ${u.pubg_id} · 📱 ${u.phone || 'Yo\\'q'}</div>
+    </div>
+  `).join('') + (data.users.length > 50 ? `<div class="muted" style="text-align:center;padding:10px">... va yana ${data.users.length-50} ta. To'liq ro'yxat uchun botdagi Excel export'dan foydalaning.</div>` : '');
+}
+
+async function markWinners(){
+  const data = await adminFetch('/api/admin/winners', { method:'POST' });
+  showToast(`✅ ${data.count} ta g'olib belgilandi`, "ok");
+  loadAdminWinners();
+}
+
+async function loadAdminWinners(){
+  const data = await adminFetch('/api/admin/winners');
+  const el = document.getElementById('adminWinnersList');
+  if(data.winners.length === 0){
+    el.innerHTML = '<div class="muted">Hali g\\'oliblar belgilanmagan</div>';
+    return;
+  }
+  const medals = {1:'🥇',2:'🥈',3:'🥉'};
+  el.innerHTML = data.winners.map(w => `
+    <div class="user-row">
+      <div class="user-row-top">
+        <span class="user-row-name">${medals[w.place]||'🏅'} ${escapeHtml(w.name)}</span>
+        <span class="lb-count" style="font-size:13px">${w.ref_count}</span>
+      </div>
+      <div class="user-row-meta">🎁 ${escapeHtml(w.gift_name)}</div>
+    </div>
+  `).join('');
+}
+
+async function resetContest(){
+  if(!confirm("Konkursni butunlay tugatmoqchimisiz? Bu amalni qaytarib bo'lmaydi!")) return;
+  await adminFetch('/api/admin/reset-contest', { method:'POST' });
+  showToast("🏁 Konkurs tugatildi", "ok");
+  loadAdminAll();
+}
+
+function escapeHtml(str){
+  if(!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
