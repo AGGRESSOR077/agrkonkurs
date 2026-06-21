@@ -16,7 +16,7 @@ from database import Database
 
 BOT_TOKEN = "8935442087:AAEkbThT6uMQQqW_LkiK6P0PV5q4QuxlV0o"
 ADMIN_ID = 7808709581
-WEBAPP_URL = "https://your-domain.com"  # ⚠️ Bu yerga Web App joylashgan haqiqiy HTTPS manzilni yozing
+WEBAPP_URL = "agrkonkurs-konkurs.up.railway.app"  # ⚠️ Bu yerga Web App joylashgan haqiqiy HTTPS manzilni yozing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
