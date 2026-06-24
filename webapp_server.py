@@ -78,6 +78,14 @@ def get_me():
     user = db.get_user(user_id)
     is_admin = user_id == ADMIN_ID
 
+    # Konkurs holati (hamma uchun qaytariladi)
+    contest_status = db.get_contest_status_flag()
+    end_date = db.get_contest_end_date()
+
+    # last_seen yangilanadi
+    if user:
+        db.update_last_seen(user_id)
+
     if not user:
         return jsonify({
             "registered": False,
@@ -86,7 +94,8 @@ def get_me():
                 "id": user_id,
                 "first_name": tg_user.get("first_name", ""),
                 "username": tg_user.get("username", "")
-            }
+            },
+            "contest": {"status": contest_status, "end_date": end_date}
         })
 
     uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
@@ -94,11 +103,14 @@ def get_me():
     pending = db.get_pending_referral_count(user_id)
     rank = db.get_user_rank(user_id)
     gift_limit = db.get_gift_top_limit()
+    was_subscribed = db.get_subscription_status(user_id)
 
     return jsonify({
         "registered": True,
         "is_admin": is_admin,
         "is_banned": bool(banned),
+        "was_subscribed": was_subscribed,
+        "has_pubg_id": pubg_id is not None,
         "user": {
             "id": uid,
             "full_name": name,
@@ -114,7 +126,8 @@ def get_me():
             "gift_limit": gift_limit,
             "in_gift_zone": (rank <= gift_limit) if count > 0 else False,
             "needed_for_gift": max(0, rank - gift_limit) if count > 0 and rank > gift_limit else 0,
-        }
+        },
+        "contest": {"status": contest_status, "end_date": end_date}
     })
 
 
@@ -151,8 +164,51 @@ def is_valid_pubg_id(pubg_id: str) -> bool:
     )
 
 
-@app.route("/api/pubg-id", methods=["POST"])
-def set_pubg_id():
+@app.route("/api/channels", methods=["GET"])
+def get_channels():
+    """Barcha majburiy kanallar ro'yxati (auth shart emas)"""
+    channels = db.get_channels_with_names()
+    return jsonify({"channels": [{"username": u, "name": n} for u, n in channels]})
+
+
+@app.route("/api/me/subscription", methods=["GET"])
+def check_subscription():
+    """Foydalanuvchi barcha kanallarga obuna bo'lganini tekshiradi"""
+    tg_user = get_user_from_request()
+    if not tg_user:
+        return jsonify({"error": "unauthorized"}), 401
+
+    user_id = tg_user["id"]
+    if user_id == ADMIN_ID:
+        return jsonify({"all_subscribed": True, "not_subscribed": []})
+
+    channels = db.get_channels_with_names()
+    if not channels:
+        return jsonify({"all_subscribed": True, "not_subscribed": []})
+
+    import requests as req_lib
+    not_subscribed = []
+    for username, name in channels:
+        try:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+            resp = req_lib.get(url, params={"chat_id": username, "user_id": user_id}, timeout=5)
+            data = resp.json()
+            if data.get("ok"):
+                status = data["result"]["status"]
+                if status in ["left", "kicked", "banned"]:
+                    not_subscribed.append({"username": username, "name": name or username})
+            else:
+                not_subscribed.append({"username": username, "name": name or username})
+        except Exception:
+            not_subscribed.append({"username": username, "name": name or username})
+
+    if not not_subscribed:
+        db.set_subscription_status(user_id, True)
+
+    return jsonify({
+        "all_subscribed": len(not_subscribed) == 0,
+        "not_subscribed": not_subscribed
+    })
     """Foydalanuvchi Web App ichida ixtiyoriy ravishda PUBG ID qo'shadi/yangilaydi"""
     tg_user = get_user_from_request()
     if not tg_user:
@@ -209,12 +265,18 @@ def admin_stats():
     tg_user = get_user_from_request()
     if not check_admin(tg_user):
         return jsonify({"error": "forbidden"}), 403
+
+    today = db.get_today_stats()
     return jsonify({
         "total_users": db.get_total_users(),
         "total_channels": len(db.get_channels()),
         "total_referrals": db.get_total_referrals(),
         "stat_top_limit": db.get_stat_top_limit(),
         "gift_top_limit": db.get_gift_top_limit(),
+        "active_last_24h": db.get_active_last_24h(),
+        "joins_today": today["joins_today"],
+        "referrals_today": today["referrals_today"],
+        "left_today": today["left_today"],
     })
 
 
@@ -375,8 +437,23 @@ def admin_settings():
     if "stat_top_limit" in data:
         db.set_stat_top_limit(int(data["stat_top_limit"]))
     if "contest_end_date" in data:
-        db.set_contest_end_date(data["contest_end_date"])
+        db.set_contest_end_date(
+            data["contest_end_date"],
+            date_iso=data.get("contest_end_iso")
+        )
+        db.set_24h_warning_sent(False)
+        db.set_contest_status_flag("active")
     return jsonify({"success": True})
+
+
+@app.route("/api/admin/suspicious", methods=["GET"])
+def admin_suspicious():
+    tg_user = get_user_from_request()
+    if not check_admin(tg_user):
+        return jsonify({"error": "forbidden"}), 403
+    rows = db.get_recent_suspicious_signups()
+    result = [{"id": r[0], "name": r[1], "phone": r[2], "joined_at": r[3]} for r in rows]
+    return jsonify({"suspicious": result, "is_suspicious": len(result) >= 3})
 
 
 @app.route("/api/admin/winners", methods=["GET"])
