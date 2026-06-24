@@ -358,7 +358,7 @@ async def my_profile(message: types.Message):
     user = db.get_user(user_id)
     if not user:
         return
-    uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
+    uid, name, uname, pubg_id, phone, ref_id, banned, joined = user[0], user[1], user[2], user[3], user[4], user[5], user[6], user[7]
     count = db.get_referral_count(user_id)
     pending = db.get_pending_referral_count(user_id)
     rank = db.get_user_rank(user_id)
@@ -768,7 +768,7 @@ async def search_user_handler(message: types.Message, state: FSMContext):
     if not user:
         await message.answer(f"❌ '{query}' bo'yicha foydalanuvchi topilmadi.", reply_markup=admin_reply_keyboard())
         return
-    uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
+    uid, name, uname, pubg_id, phone, ref_id, banned, joined = user[0], user[1], user[2], user[3], user[4], user[5], user[6], user[7]
     ref_count = db.get_referral_count(uid)
     rank = db.get_user_rank(uid)
     ban_status = "🚫 Ban" if banned else "✅ Faol"
