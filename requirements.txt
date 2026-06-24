@@ -3,3 +3,4 @@ aiosqlite==0.20.0
 openpyxl==3.1.5
 Flask==3.1.0
 flask-cors==5.0.0
+requests==2.32.3
