@@ -98,7 +98,14 @@ def get_me():
             "contest": {"status": contest_status, "end_date": end_date}
         })
 
-    uid, name, uname, pubg_id, phone, ref_id, banned, joined = user
+    uid = user[0]
+    name = user[1]
+    uname = user[2]
+    pubg_id = user[3]
+    phone = user[4]
+    ref_id = user[5]
+    banned = user[6]
+    joined = user[7]
     count = db.get_referral_count(user_id)
     pending = db.get_pending_referral_count(user_id)
     rank = db.get_user_rank(user_id)
