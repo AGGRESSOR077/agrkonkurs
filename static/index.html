@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>PUBG Contest</title>
-
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>PUBG Konkurs</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
 <style>
 :root{
   --bg:#0b1020;
@@ -17,301 +15,450 @@
   --primary:#6ea8ff;
   --accent:#7bffca;
   --danger:#ff6b6b;
+  --warn:#ffd166;
   --gold:#ffd166;
   --silver:#d9e1ec;
   --bronze:#d4a373;
-  --radius:22px;
+  --radius:18px;
+  --green:#2ecc71;
+  --red:#e74c3c;
 }
-
-*{box-sizing:border-box}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
-  margin:0;
   background:
     radial-gradient(circle at top right,#22306d 0%,transparent 30%),
     radial-gradient(circle at bottom left,#0f5f52 0%,transparent 30%),
     var(--bg);
   color:var(--text);
   font-family:Inter,system-ui,sans-serif;
-}
-
-.app{
-  max-width:560px;
-  margin:auto;
   min-height:100vh;
-  padding:16px 16px 110px;
 }
+.app{max-width:560px;margin:auto;min-height:100vh;padding:14px 14px 100px}
 
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:18px;
+/* ===== HEADER ===== */
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.logo{font-size:20px;font-weight:800}
+.contest-badge{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.5px;
 }
+.badge-active{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.3)}
+.badge-finished{background:rgba(231,76,60,.15);color:var(--red);border:1px solid rgba(231,76,60,.3)}
 
-.logo{
-  font-size:22px;
-  font-weight:800;
-}
-
+/* ===== CARDS ===== */
 .card{
   background:linear-gradient(180deg,var(--card),var(--card2));
   border:1px solid rgba(255,255,255,.06);
   border-radius:var(--radius);
-  padding:16px;
-  margin-bottom:14px;
-  backdrop-filter:blur(10px);
+  padding:16px;margin-bottom:12px;
+}
+.card-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+
+/* ===== HERO ===== */
+.hero-rank{font-size:46px;font-weight:900;line-height:1}
+.hero-rank span{font-size:22px;color:var(--muted)}
+.progress{height:9px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:10px 0 4px}
+.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .6s ease}
+.progress-label{font-size:12px;color:var(--muted)}
+
+/* ===== GRID ===== */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat-box{background:rgba(255,255,255,.05);border-radius:14px;padding:12px}
+.stat-num{font-size:22px;font-weight:800}
+.stat-num.green{color:var(--accent)}
+.stat-num.gold{color:var(--gold)}
+.stat-num.red{color:var(--danger)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ===== COUNTDOWN ===== */
+.countdown-bar{
+  background:linear-gradient(135deg,rgba(255,107,107,.1),rgba(255,209,102,.08));
+  border:1px solid rgba(255,107,107,.2);border-radius:var(--radius);
+  padding:12px 16px;margin-bottom:12px;text-align:center;
+}
+.countdown-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.countdown-val{font-size:15px;font-weight:700;color:var(--warn);margin-top:4px}
+
+/* ===== LINK BOX ===== */
+.link-box{
+  background:rgba(110,168,255,.06);border:1px dashed rgba(110,168,255,.25);
+  border-radius:12px;padding:10px 13px;font-family:monospace;font-size:11.5px;
+  color:var(--muted);word-break:break-all;margin-bottom:10px;
 }
 
-.hero{
-  padding:22px;
-}
-
-.rank{
-  font-size:42px;
-  font-weight:900;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-.stat{
-  background:rgba(255,255,255,.05);
-  border-radius:16px;
-  padding:12px;
-}
-
-.label{
-  color:var(--muted);
-  font-size:13px;
-}
-
-.value{
-  font-size:22px;
-  font-weight:700;
-}
-
-.progress{
-  height:10px;
-  border-radius:999px;
-  background:rgba(255,255,255,.08);
-  overflow:hidden;
-  margin-top:10px;
-}
-
-.progress span{
-  display:block;
-  height:100%;
-  background:linear-gradient(90deg,var(--primary),var(--accent));
-}
-
+/* ===== BUTTONS ===== */
 .btn{
-  border:none;
-  cursor:pointer;
-  border-radius:16px;
-  padding:14px;
-  width:100%;
-  font-weight:700;
-  margin-top:8px;
+  width:100%;padding:13px;border-radius:14px;border:none;
+  font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .15s,transform .1s;
 }
+.btn:active{transform:scale(.97);opacity:.85}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#8c7cff);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.08);color:var(--text)}
+.btn-danger{background:rgba(231,76,60,.15);color:var(--danger);border:1px solid rgba(231,76,60,.3)}
+.btn-green{background:linear-gradient(135deg,var(--accent),#1e9c4e);color:#072012}
+.btn-warn{background:rgba(255,209,102,.12);color:var(--warn);border:1px solid rgba(255,209,102,.3)}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto}
 
-.primary{
-  background:linear-gradient(135deg,var(--primary),#8c7cff);
-  color:#fff;
-}
-
-.secondary{
-  background:rgba(255,255,255,.08);
-  color:#fff;
-}
-
-.list{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.item{
-  background:rgba(255,255,255,.05);
-  padding:14px;
-  border-radius:16px;
-}
-
-.row{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-}
-
-.badge{
-  padding:5px 10px;
-  border-radius:999px;
-  font-size:12px;
-}
-
-.ok{background:#1f6f48}
-.wait{background:#8a6d1f}
-.off{background:#7a2734}
-
-.leader.top1{border-left:5px solid var(--gold)}
-.leader.top2{border-left:5px solid var(--silver)}
-.leader.top3{border-left:5px solid var(--bronze)}
-
+/* ===== INPUT ===== */
 .input{
-  width:100%;
-  background:rgba(255,255,255,.06);
-  border:none;
-  color:white;
-  padding:12px;
-  border-radius:14px;
-  margin-top:8px;
+  width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:var(--text);padding:12px 14px;border-radius:12px;font-size:14px;
+  margin-bottom:10px;font-family:inherit;
 }
+.input:focus{outline:none;border-color:rgba(110,168,255,.5)}
+.input::placeholder{color:var(--muted)}
+.input-lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+.err-msg{color:var(--danger);font-size:12px;margin-top:-6px;margin-bottom:8px}
 
+/* ===== LEADERBOARD ===== */
+.lb-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:13px;margin-bottom:8px;
+}
+.lb-item.me{border-color:rgba(110,168,255,.4);background:rgba(110,168,255,.07)}
+.lb-item.top1{border-left:4px solid var(--gold)}
+.lb-item.top2{border-left:4px solid var(--silver)}
+.lb-item.top3{border-left:4px solid var(--bronze)}
+.lb-rank{font-size:18px;font-weight:900;width:30px;text-align:center;flex-shrink:0}
+.lb-info{flex:1;min-width:0}
+.lb-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.lb-count{font-size:16px;font-weight:800;color:var(--accent);flex-shrink:0}
+
+/* ===== GIFTS ===== */
+.gift-item{
+  display:flex;align-items:center;gap:14px;padding:14px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:13px;margin-bottom:8px;
+}
+.gift-medal{font-size:26px;flex-shrink:0}
+.gift-place{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.gift-name{font-size:15px;font-weight:600;margin-top:2px}
+
+/* ===== HISTORY ===== */
+.hist-item{padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.hist-item:last-child{border:none}
+.hist-top{display:flex;justify-content:space-between;align-items:center}
+.hist-name{font-size:14px;font-weight:600}
+.hist-date{font-size:11px;color:var(--muted);margin-top:3px}
+.badge{padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700}
+.b-ok{background:#1a4f32;color:var(--accent)}
+.b-wait{background:#4a3a0e;color:var(--warn)}
+.b-off{background:#4a1a1a;color:var(--danger)}
+
+/* ===== ADMIN SPECIAL ===== */
+.activity-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.activity-row:last-child{border:none}
+.warn-box{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:12px;padding:12px;margin-bottom:10px}
+.warn-title{color:var(--danger);font-weight:700;font-size:13px;margin-bottom:6px}
+.user-mini{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.user-mini:last-child{border:none}
+.user-mini-name{font-size:13px;font-weight:600}
+.user-mini-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ===== SCREENS (obuna, PUBG, tugagan) ===== */
+.screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;text-align:center;
+}
+.screen-icon{font-size:56px;margin-bottom:16px}
+.screen-title{font-size:20px;font-weight:800;margin-bottom:8px}
+.screen-desc{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.channel-list{width:100%;margin-bottom:16px}
+.channel-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:14px 16px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);border-radius:14px;
+  margin-bottom:8px;color:var(--text);font-size:14px;font-weight:600;
+  cursor:pointer;text-decoration:none;
+}
+.channel-btn .arrow{color:var(--primary);font-size:18px}
+
+/* ===== TABBAR ===== */
 .tabbar{
-  position:fixed;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:0;
-  width:100%;
-  max-width:560px;
-  background:rgba(9,13,28,.95);
-  backdrop-filter:blur(12px);
-  display:flex;
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:560px;
+  background:rgba(9,13,28,.95);backdrop-filter:blur(14px);
   border-top:1px solid rgba(255,255,255,.08);
+  display:flex;padding:6px 4px calc(6px + env(safe-area-inset-bottom));
 }
-
 .tab{
-  flex:1;
-  text-align:center;
-  padding:14px 6px;
-  color:var(--muted);
-  cursor:pointer;
-  font-size:12px;
+  flex:1;text-align:center;padding:10px 4px;
+  color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;
+  letter-spacing:.3px;border-radius:10px;transition:color .15s;
 }
+.tab.active{color:white}
+.tab-icon{font-size:20px;display:block;margin-bottom:2px}
 
-.tab.active{
-  color:white;
-}
-
-.hidden{
-  display:none;
-}
-
-.center{
-  text-align:center;
-  padding:40px 20px;
-}
-
-.countdown{
-  color:var(--accent);
-  font-weight:700;
-}
-
-small{color:var(--muted)}
+/* ===== UTILS ===== */
+.hidden{display:none!important}
+.center{text-align:center;padding:40px 16px}
+.center p{color:var(--muted);font-size:14px;line-height:1.6}
+small{color:var(--muted);font-size:12px}
+.mt8{margin-top:8px}
+.mt14{margin-top:14px}
+.sep{height:1px;background:rgba(255,255,255,.06);margin:14px 0}
 </style>
 </head>
 <body>
 
-<div class="app">
+<!-- ===== LOADING ===== -->
+<div id="scLoading" class="screen">
+  <div class="screen-icon">⏳</div>
+  <div class="screen-title">Yuklanmoqda...</div>
+</div>
 
-  <div id="loading" class="center">
-    Yuklanmoqda...
+<!-- ===== BAN ===== -->
+<div id="scBan" class="screen hidden">
+  <div class="screen-icon">🚫</div>
+  <div class="screen-title">Bloklangansiz</div>
+  <div class="screen-desc">Siz botdan bloklangansiz. Murojaat uchun admin bilan bog'laning.</div>
+</div>
+
+<!-- ===== RO'YXATDAN O'TMAGAN ===== -->
+<div id="scUnreg" class="screen hidden">
+  <div class="screen-icon">📲</div>
+  <div class="screen-title">Avval ro'yxatdan o'ting</div>
+  <div class="screen-desc">Botga <b>/start</b> yozing va telefon raqamingizni yuboring.</div>
+</div>
+
+<!-- ===== KONKURS TUGAGAN ===== -->
+<div id="scFinished" class="screen hidden">
+  <div class="screen-icon">🏁</div>
+  <div class="screen-title">Konkurs tugadi!</div>
+  <div class="screen-desc">G'oliblar tez orada e'lon qilinadi. Qatnashganingiz uchun rahmat!</div>
+</div>
+
+<!-- ===== OBUNA EKRANI ===== -->
+<div id="scSub" class="screen hidden">
+  <div class="screen-icon">📢</div>
+  <div class="screen-title">Kanallarga obuna bo'ling</div>
+  <div class="screen-desc">Konkursda ishtirok etish uchun quyidagi kanallarga obuna bo'ling.</div>
+  <div class="channel-list" id="channelList"></div>
+  <button class="btn btn-primary" onclick="checkSubscription()">✅ Obuna bo'ldim</button>
+  <div id="subError" class="err-msg mt8"></div>
+</div>
+
+<!-- ===== PUBG ID EKRANI ===== -->
+<div id="scPubg" class="screen hidden">
+  <div class="screen-icon">🎮</div>
+  <div class="screen-title">PUBG ID kiriting</div>
+  <div class="screen-desc">Reytingda ko'rinish uchun PUBG ID ingizni kiriting.<br>Kamida 7 xonali, 5 yoki 6 bilan boshlanishi kerak.</div>
+  <div style="width:100%">
+    <input class="input" id="pubgInput" placeholder="Masalan: 5123456789" inputmode="numeric" type="number">
+    <div id="pubgError" class="err-msg"></div>
+    <button class="btn btn-primary" onclick="savePubgId()">💾 Saqlash</button>
   </div>
+</div>
 
-  <div id="blocked" class="center hidden">
-    <h2>Siz bloklangansiz</h2>
-  </div>
+<!-- ===== ASOSIY ILOVA ===== -->
+<div id="mainApp" class="hidden">
+  <div class="app">
 
-  <div id="unregistered" class="center hidden">
-    <h2>Avval botga /start yozing</h2>
-  </div>
-
-  <div id="mainApp" class="hidden">
-
+    <!-- Header -->
     <div class="header">
-      <div class="logo">🏆 PUBG Contest</div>
-      <div id="username"></div>
+      <div class="logo">🏆 PUBG Konkurs</div>
+      <div id="contestBadge"></div>
     </div>
 
-    <!-- HOME -->
+    <!-- Konkurs tugash sanasi -->
+    <div id="countdownBar" class="countdown-bar hidden">
+      <div class="countdown-lbl">⏰ Konkurs tugaydi</div>
+      <div class="countdown-val" id="countdownVal"></div>
+    </div>
+
+    <!-- HOME TAB -->
     <section id="tab-home">
-
-      <div class="card hero">
-        <div class="label">Joriy reyting</div>
-        <div class="rank">#<span id="rank">0</span></div>
-
+      <div class="card">
+        <div class="card-title">Joriy reyting</div>
+        <div class="hero-rank" id="heroRank"><span>#</span>—</div>
         <div style="margin-top:10px">
-          <small>Top sovrin zonasiga yaqinlashuv</small>
-          <div class="progress">
-            <span id="progressBar" style="width:0%"></span>
-          </div>
+          <div class="progress"><span id="progressBar" style="width:0%"></span></div>
+          <div class="progress-label" id="progressLabel"></div>
         </div>
       </div>
 
-      <div class="grid">
-        <div class="stat">
-          <div class="label">Referallar</div>
-          <div class="value" id="refCount">0</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="stat-box">
+          <div class="stat-num green" id="statRef">0</div>
+          <div class="stat-lbl">Referallar</div>
         </div>
-
-        <div class="stat">
-          <div class="label">Kutilmoqda</div>
-          <div class="value" id="pendingCount">0</div>
+        <div class="stat-box">
+          <div class="stat-num gold" id="statPending">0</div>
+          <div class="stat-lbl">Kutilmoqda</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="label">Referal havola</div>
-        <div id="refLink" style="margin-top:10px;word-break:break-all"></div>
-
-        <button class="btn primary" onclick="copyReferral()">
-          Nusxalash
-        </button>
-
-        <button class="btn secondary" onclick="shareReferral()">
-          Ulashish
-        </button>
+        <div class="card-title">Referal havola</div>
+        <div class="link-box" id="refLink">yuklanmoqda...</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="copyLink()">📋 Nusxalash</button>
+          <button class="btn btn-secondary" onclick="shareLink()">📤 Ulashish</button>
+        </div>
       </div>
 
       <div class="card" id="pubgCard">
-        <!-- JS orqali to'ldiriladi: PUBG ID ko'rsatish yoki qo'shish formasi -->
+        <!-- PUBG ID ko'rsatish yoki o'zgartirish -->
+      </div>
+    </section>
+
+    <!-- TOP TAB -->
+    <section id="tab-leaderboard" class="hidden">
+      <div id="lbList"></div>
+    </section>
+
+    <!-- SOVRINLAR TAB -->
+    <section id="tab-gifts" class="hidden">
+      <div id="giftsList"></div>
+    </section>
+
+    <!-- TARIX TAB -->
+    <section id="tab-history" class="hidden">
+      <div class="card" id="histCard"></div>
+    </section>
+
+    <!-- ADMIN TAB -->
+    <section id="tab-admin" class="hidden">
+
+      <!-- Shubhali faollik -->
+      <div id="suspiciousBox" class="hidden"></div>
+
+      <!-- Bugungi faollik -->
+      <div class="card">
+        <div class="card-title">Bugungi faollik</div>
+        <div class="grid3">
+          <div class="stat-box">
+            <div class="stat-num green" id="aJoins">—</div>
+            <div class="stat-lbl">Kirdi</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num gold" id="aRefs">—</div>
+            <div class="stat-lbl">Referal</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num red" id="aLeft">—</div>
+            <div class="stat-lbl">Chiqdi</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Umumiy statistika -->
+      <div class="card">
+        <div class="card-title">Umumiy</div>
+        <div class="grid2">
+          <div class="stat-box">
+            <div class="stat-num" id="aTotal">—</div>
+            <div class="stat-lbl">Foydalanuvchi</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num green" id="aActive">—</div>
+            <div class="stat-lbl">24-soatda faol</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- So'nggi 3 foydalanuvchi -->
+      <div class="card">
+        <div class="card-title">So'nggi 3 foydalanuvchi</div>
+        <div id="lastUsers"></div>
+        <button class="btn btn-primary mt8" id="excelBtn" onclick="downloadExcel()">
+          📥 Barchasini yuklab olish
+        </button>
+      </div>
+
+      <!-- Kanallar -->
+      <div class="card">
+        <div class="card-title">Kanallar</div>
+        <div id="channelsAdmin"></div>
+        <div class="sep"></div>
+        <div class="input-lbl">Yangi kanal qo'shish</div>
+        <input class="input" id="newChUser" placeholder="@kanal_username">
+        <input class="input" id="newChName" placeholder="Kanal nomi">
+        <button class="btn btn-primary" onclick="addChannel()">➕ Qo'shish</button>
+      </div>
+
+      <!-- Sovrinlar -->
+      <div class="card">
+        <div class="card-title">Sovrinlar va sozlamalar</div>
+        <div id="giftsAdmin"></div>
+        <div class="sep"></div>
+        <div class="input-lbl">Sovrin qo'shish</div>
+        <input class="input" type="number" id="giftPlace" placeholder="O'rin raqami (1, 2, 3...)">
+        <input class="input" id="giftName" placeholder="Sovrin nomi">
+        <button class="btn btn-primary" onclick="addGift()">🎁 Qo'shish</button>
+
+        <div class="sep"></div>
+        <div class="input-lbl">Sovrin beriladigan o'rin soni (Top N)</div>
+        <input class="input" type="number" id="settingGift" placeholder="10">
+        <div class="input-lbl">Statistikada ko'rsatiladigan o'rinlar soni</div>
+        <input class="input" type="number" id="settingStat" placeholder="20">
+        <button class="btn btn-secondary" onclick="saveSettings()">💾 Sozlamalarni saqlash</button>
+      </div>
+
+      <!-- Konkurs muddati -->
+      <div class="card">
+        <div class="card-title">Konkurs muddati</div>
+        <div class="input-lbl">Ko'rsatish uchun matn (masalan: 15 Iyul 2026, soat 20:00)</div>
+        <input class="input" id="endDateText" placeholder="15 Iyul 2026, soat 20:00">
+        <div class="input-lbl">Avtomatik tugash vaqti (sana va vaqt tanlang)</div>
+        <input class="input" type="datetime-local" id="endDateIso" style="color-scheme:dark">
+        <button class="btn btn-warn" onclick="saveEndDate()">⏰ Sanani belgilash</button>
+      </div>
+
+      <!-- Ban / Unban -->
+      <div class="card">
+        <div class="card-title">Ban / Unban</div>
+        <input class="input" id="banUser" placeholder="@username">
+        <div class="btn-row">
+          <button class="btn btn-danger" onclick="banUser()">🚫 Ban</button>
+          <button class="btn btn-green" onclick="unbanUser()">✅ Unban</button>
+        </div>
+      </div>
+
+      <!-- G'oliblar -->
+      <div class="card">
+        <div class="card-title">G'oliblar</div>
+        <button class="btn btn-primary" onclick="markWinners()">🏆 G'oliblarni belgilash</button>
+        <div id="winnersAdmin" class="mt8"></div>
+      </div>
+
+      <!-- Xavfli zona -->
+      <div class="card">
+        <div class="card-title" style="color:var(--danger)">Xavfli zona</div>
+        <button class="btn btn-danger" onclick="resetContest()">🏁 Konkursni tugatish</button>
+        <small class="mt8" style="display:block">Barcha referallar va sovrinlar o'chiriladi. Foydalanuvchilar saqlanadi.</small>
       </div>
 
     </section>
 
-    <!-- LEADERBOARD -->
-    <section id="tab-leaderboard" class="hidden">
-      <div id="leaderboardList"></div>
-    </section>
-
-    <!-- GIFTS -->
-    <section id="tab-gifts" class="hidden">
-      <div id="giftCountdown" class="card hidden"></div>
-      <div id="giftList"></div>
-    </section>
-
-    <!-- HISTORY -->
-    <section id="tab-history" class="hidden">
-      <div id="historyList"></div>
-    </section>
-
-    <!-- ADMIN -->
-    <section id="tab-admin" class="hidden">
-      <div id="adminContent"></div>
-    </section>
-
   </div>
-
 </div>
 
+<!-- ===== TABBAR ===== -->
 <div class="tabbar hidden" id="tabbar">
-  <div class="tab active" data-tab="home">🏠<br>Bosh</div>
-  <div class="tab" data-tab="leaderboard">🏆<br>Top</div>
-  <div class="tab" data-tab="gifts">🎁<br>Sovrin</div>
-  <div class="tab" data-tab="history">📜<br>Tarix</div>
-  <div class="tab hidden" id="adminTabButton" data-tab="admin">⚙️<br>Admin</div>
+  <div class="tab active" onclick="show('home')">
+    <span class="tab-icon">🏠</span>Bosh
+  </div>
+  <div class="tab" onclick="show('leaderboard')">
+    <span class="tab-icon">🏆</span>Top
+  </div>
+  <div class="tab" onclick="show('gifts')">
+    <span class="tab-icon">🎁</span>Sovrin
+  </div>
+  <div class="tab" onclick="show('history')">
+    <span class="tab-icon">📜</span>Tarix
+  </div>
+  <div class="tab hidden" id="adminTab" onclick="show('admin')">
+    <span class="tab-icon">⚙️</span>Admin
+  </div>
 </div>
 
 <script>
@@ -319,407 +466,524 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-let STATE = {
-  me:null,
-  loaded:{}
-};
+let STATE = { me: null, link: "", loaded: {} };
 
-function authHeaders(){
-  return {
-    "Content-Type":"application/json",
-    "X-Telegram-Init-Data": tg.initData || ""
-  };
+// ===== API =====
+function authH(){
+  return { "Content-Type": "application/json", "X-Telegram-Init-Data": tg.initData || "" };
 }
 
-async function api(url, options={}){
-  try{
-    const res = await fetch(url,{
-      ...options,
-      headers:{
-        ...authHeaders(),
-        ...(options.headers || {})
-      }
-    });
-
-    if(!res.ok) throw new Error("Server error");
-    return await res.json();
-  }catch(err){
-    tg.showAlert("Ma'lumot yuklanmadi");
-    throw err;
-  }
+async function api(url, opts={}){
+  const res = await fetch(url, { ...opts, headers: { ...authH(), ...(opts.headers||{}) } });
+  if(!res.ok) throw new Error(`${res.status}`);
+  return res.json();
 }
 
-function show(id){
-  document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));
-  document.getElementById("tab-"+id).classList.remove("hidden");
-
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  document.querySelector(`[data-tab="${id}"]`)?.classList.add("active");
-
-  lazyLoad(id);
+function showScreen(id){
+  ["scLoading","scBan","scUnreg","scFinished","scSub","scPubg","mainApp"].forEach(s=>{
+    document.getElementById(s).classList.toggle("hidden", s !== id);
+  });
 }
 
+// ===== INIT =====
 async function init(){
-
   try{
     const me = await api("/api/me");
     STATE.me = me;
 
-    loading.classList.add("hidden");
+    if(me.is_banned){ showScreen("scBan"); return; }
+    if(!me.registered){ showScreen("scUnreg"); return; }
 
-    if(me.is_banned){
-      blocked.classList.remove("hidden");
-      return;
+    // Konkurs tugagan va foydalanuvchi admin emas
+    if(me.contest.status === "finished" && !me.is_admin){
+      showScreen("scFinished"); return;
     }
 
-    if(!me.registered){
-      unregistered.classList.remove("hidden");
-      return;
-    }
+    // Obuna tekshirish
+    const subCheck = await checkSubStatus();
+    if(!subCheck){ return; } // subCheck showScreen("scSub") chaqirgan bo'ladi
 
-    mainApp.classList.remove("hidden");
-    tabbar.classList.remove("hidden");
+    // PUBG ID majburiy
+    if(!me.has_pubg_id){ showScreen("scPubg"); return; }
 
-    fillHome(me);
+    // Asosiy ilova
+    renderMainApp(me);
 
-    if(me.is_admin){
-      adminTabButton.classList.remove("hidden");
-    }
-
-  }catch{
-    loading.innerHTML="Xatolik. Qayta urinib ko'ring.";
+  }catch(e){
+    showScreen("scLoading");
+    document.getElementById("scLoading").querySelector(".screen-desc") &&
+    (document.getElementById("scLoading").querySelector(".screen-desc").textContent = "Xatolik. Qayta urinib ko'ring.");
+    document.getElementById("scLoading").querySelector(".screen-title").textContent = "Xatolik ⚠️";
   }
 }
 
-async function fillHome(me){
+// ===== OBUNA TEKSHIRISH =====
+async function checkSubStatus(){
+  try{
+    const channels = await api("/api/channels");
+    if(!channels.channels || channels.channels.length === 0) return true;
 
-  username.textContent = me.user.full_name;
+    const notSub = await api("/api/me/subscription");
+    if(notSub.all_subscribed) return true;
 
-  rank.textContent = me.stats.rank ?? "—";
-  refCount.textContent = me.stats.referral_count;
-  pendingCount.textContent = me.stats.pending_count;
+    // Obuna ekranini ko'rsat
+    const list = document.getElementById("channelList");
+    list.innerHTML = notSub.not_subscribed.map(ch => `
+      <a href="https://t.me/${ch.username.replace('@','')}" target="_blank" class="channel-btn">
+        <span>📢 ${ch.name || ch.username}</span>
+        <span class="arrow">→</span>
+      </a>
+    `).join("");
+    showScreen("scSub");
+    return false;
+  }catch(e){
+    return true; // Tekshirib bo'lmasa davom etamiz
+  }
+}
 
-  let percent = me.stats.in_gift_zone
-      ? 100
-      : Math.max(5,100 - (me.stats.needed_for_gift*10));
+async function checkSubscription(){
+  document.getElementById("subError").textContent = "";
+  try{
+    const res = await api("/api/me/subscription");
+    if(res.all_subscribed){
+      // Obuna qilindi — PUBG ID tekshirish
+      if(!STATE.me.has_pubg_id){ showScreen("scPubg"); return; }
+      renderMainApp(STATE.me);
+    } else {
+      document.getElementById("subError").textContent = "❌ Hali barcha kanallarga obuna bo'lmadingiz!";
+    }
+  }catch(e){
+    document.getElementById("subError").textContent = "Xatolik. Qayta urining.";
+  }
+}
 
-  progressBar.style.width = percent + "%";
+// ===== PUBG ID =====
+async function savePubgId(){
+  const input = document.getElementById("pubgInput");
+  const errEl = document.getElementById("pubgError");
+  errEl.textContent = "";
+  const val = input.value.trim();
 
   try{
-    const r = await api("/api/referral-link");
-    refLink.textContent = r.link;
-    STATE.refLink = r.link;
-  }catch{}
+    const res = await fetch("/api/pubg-id", { method:"POST", headers: authH(), body: JSON.stringify({pubg_id: val}) });
+    const data = await res.json();
+    if(!res.ok){ errEl.textContent = data.message || "Xato PUBG ID"; return; }
+    STATE.me.has_pubg_id = true;
+    STATE.me.user.pubg_id = data.pubg_id;
+    tg.showAlert("✅ PUBG ID saqlandi!");
+    renderMainApp(STATE.me);
+  }catch(e){
+    errEl.textContent = "Server bilan aloqa yo'q";
+  }
+}
 
-  renderPubgCard(me.user.pubg_id);
+// ===== ASOSIY ILOVA =====
+function renderMainApp(me){
+  showScreen("mainApp");
+  document.getElementById("tabbar").classList.remove("hidden");
+  if(me.is_admin) document.getElementById("adminTab").classList.remove("hidden");
+
+  // Konkurs holati belgisi
+  const badge = document.getElementById("contestBadge");
+  if(me.contest.status === "finished"){
+    badge.innerHTML = `<span class="contest-badge badge-finished">🔴 Tugadi</span>`;
+  } else {
+    badge.innerHTML = `<span class="contest-badge badge-active">🟢 Faol</span>`;
+  }
+
+  // Tugash sanasi
+  if(me.contest.end_date && me.contest.status === "active"){
+    document.getElementById("countdownBar").classList.remove("hidden");
+    document.getElementById("countdownVal").textContent = me.contest.end_date;
+  }
+
+  fillHome(me);
+  loadRefLink();
+}
+
+function fillHome(me){
+  const s = me.stats;
+  const u = me.user;
+  document.getElementById("statRef").textContent = s.referral_count;
+  document.getElementById("statPending").textContent = s.pending_count;
+
+  if(s.rank){
+    document.getElementById("heroRank").innerHTML = `<span>#</span>${s.rank}`;
+    const pct = s.in_gift_zone ? 100 : Math.max(5, 100 - (s.needed_for_gift * 8));
+    document.getElementById("progressBar").style.width = pct + "%";
+    document.getElementById("progressLabel").textContent = s.in_gift_zone
+      ? "🎉 Siz sovrin zonasida!"
+      : `🎯 Top ${s.gift_limit} ga kirish uchun yana ${s.needed_for_gift} kishi taklif qiling`;
+  } else {
+    document.getElementById("heroRank").innerHTML = `<span>#</span>—`;
+    document.getElementById("progressLabel").textContent = "Birinchi referaldan keyin reyting chiqadi";
+  }
+
+  renderPubgCard(u.pubg_id);
 }
 
 function renderPubgCard(pubgId){
   const card = document.getElementById("pubgCard");
   if(pubgId){
     card.innerHTML = `
-      <div class="label">PUBG ID</div>
-      <div style="font-size:18px;font-weight:700;margin-top:6px">${pubgId}</div>
-      <button class="btn secondary" onclick="editPubgId()">O'zgartirish</button>
-      <div id="pubgError" style="color:var(--danger);font-size:13px;margin-top:6px"></div>
+      <div class="card-title">PUBG ID</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:10px">${pubgId}</div>
+      <button class="btn btn-secondary btn-sm" onclick="editPubgCard()">✏️ O'zgartirish</button>
     `;
   } else {
     card.innerHTML = `
-      <div class="label">PUBG ID (ixtiyoriy)</div>
-      <small>Reytingda ko'rsatish uchun PUBG ID qo'shing</small>
-      <input class="input" id="pubgInput" placeholder="Masalan: 5123456789" inputmode="numeric">
-      <button class="btn primary" onclick="savePubgId()">Saqlash</button>
-      <div id="pubgError" style="color:var(--danger);font-size:13px;margin-top:6px"></div>
+      <div class="card-title">PUBG ID</div>
+      <input class="input" id="pubgCardInput" placeholder="5123456789" inputmode="numeric" type="number">
+      <div id="pubgCardErr" class="err-msg"></div>
+      <button class="btn btn-primary" onclick="savePubgCard()">💾 Saqlash</button>
     `;
   }
 }
 
-function editPubgId(){
-  renderPubgCard(null);
-}
+function editPubgCard(){ renderPubgCard(null); }
 
-async function savePubgId(){
-  const input = document.getElementById("pubgInput");
-  const errorBox = document.getElementById("pubgError");
-  const value = input.value.trim();
-  errorBox.textContent = "";
-
+async function savePubgCard(){
+  const val = document.getElementById("pubgCardInput").value.trim();
+  const err = document.getElementById("pubgCardErr");
+  err.textContent = "";
   try{
-    const res = await fetch("/api/pubg-id", {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ pubg_id: value })
-    });
+    const res = await fetch("/api/pubg-id", { method:"POST", headers: authH(), body: JSON.stringify({pubg_id: val}) });
     const data = await res.json();
-
-    if(!res.ok){
-      errorBox.textContent = data.message || "Xatolik yuz berdi";
-      return;
-    }
-
+    if(!res.ok){ err.textContent = data.message || "Xato"; return; }
+    STATE.me.user.pubg_id = data.pubg_id;
     renderPubgCard(data.pubg_id);
-    tg.showAlert("PUBG ID saqlandi!");
-  }catch{
-    errorBox.textContent = "Server bilan aloqa yo'q";
-  }
+    tg.showAlert("✅ PUBG ID saqlandi!");
+  }catch(e){ err.textContent = "Xatolik"; }
 }
 
-async function lazyLoad(tab){
-
-  if(STATE.loaded[tab]) return;
-
+async function loadRefLink(){
   try{
-
-    if(tab==="leaderboard"){
-      const data = await api("/api/leaderboard");
-
-      if(data.leaderboard.length === 0){
-        leaderboardList.innerHTML = `<div class="center"><p>Hali hech kim referal qo'shmagan.<br>Birinchi bo'ling! 🎯</p></div>`;
-      } else {
-        leaderboardList.innerHTML = data.leaderboard.map((u,i)=>`
-        <div class="card leader top${i+1}">
-          <div class="row">
-            <b>#${u.rank} ${u.name}</b>
-            <b>${u.ref_count}</b>
-          </div>
-          <small>@${u.username || "-"} | PUBG: ${u.pubg_id || "kiritilmagan"}</small>
-        </div>`).join("");
-      }
-    }
-
-    if(tab==="gifts"){
-      const data = await api("/api/gifts");
-
-      if(data.end_date){
-        giftCountdown.classList.remove("hidden");
-        giftCountdown.innerHTML =
-          `<div class="countdown">⏳ ${data.end_date}</div>`;
-      }
-
-      if(data.gifts.length === 0){
-        giftList.innerHTML = `<div class="center"><p>Sovrinlar hali e'lon qilinmagan.<br>Tez kunda! 🎁</p></div>`;
-      } else {
-        giftList.innerHTML = data.gifts.map(g=>`
-        <div class="card">
-          <b>${g.place}-o'rin</b><br>
-          ${g.name}
-        </div>`).join("");
-      }
-    }
-
-    if(tab==="history"){
-      const data = await api("/api/history");
-
-      if(data.history.length === 0){
-        historyList.innerHTML = `<div class="center"><p>Hali hech kimni taklif qilmadingiz.<br>Referal havolangizni ulashing!</p></div>`;
-      } else {
-        historyList.innerHTML = data.history.map(h=>{
-
-          let badge =
-            h.confirmed
-              ? `<span class="badge ok">Tasdiqlangan</span>`
-              : `<span class="badge wait">Kutilmoqda</span>`;
-
-          if(!h.active)
-            badge=`<span class="badge off">Chiqib ketgan</span>`;
-
-          return `
-          <div class="card">
-            <div class="row">
-              <b>${h.name}</b>
-              ${badge}
-            </div>
-            <small>${new Date(h.date).toLocaleString()}</small>
-          </div>`;
-        }).join("");
-      }
-    }
-
-    if(tab==="admin"){
-      await loadAdmin();
-    }
-
-    STATE.loaded[tab]=true;
-
-  }catch{}
+    const r = await api("/api/referral-link");
+    document.getElementById("refLink").textContent = r.link;
+    STATE.link = r.link;
+  }catch(e){}
 }
 
-async function loadAdmin(){
-
-  const stats = await api("/api/admin/stats");
-  const usersData = await api("/api/admin/users");
-
-  const usersHtml = usersData.users.map(u => `
-    <div class="item">
-      <div class="row">
-        <b>${u.name}</b>
-        <span>${u.ref_count} ⭐</span>
-      </div>
-      <small>🆔 ${u.telegram_id} | @${u.username || "-"}</small><br>
-      <small>🎮 ${u.pubg_id || "PUBG ID kiritilmagan"} | 📱 ${u.phone || "Yo'q"}</small>
-      ${u.banned ? '<br><span class="badge off" style="margin-top:6px;display:inline-block">BAN</span>' : ''}
-    </div>
-  `).join("");
-
-  adminContent.innerHTML = `
-  <div class="grid">
-    <div class="stat">
-      <div class="label">Users</div>
-      <div class="value">${stats.total_users}</div>
-    </div>
-    <div class="stat">
-      <div class="label">Referal</div>
-      <div class="value">${stats.total_referrals}</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>So'nggi 3 foydalanuvchi</h3>
-    <div class="list" style="margin-top:10px">
-      ${usersHtml || "<small>Foydalanuvchilar yo'q</small>"}
-    </div>
-    <button class="btn primary" onclick="downloadUsersExcel()" id="excelBtn">
-      📥 Ma'lumotlarni yuklab olish
-    </button>
-  </div>
-
-  <div class="card">
-    <h3>Kanal qo'shish</h3>
-    <input class="input" id="chUser" placeholder="@kanal">
-    <input class="input" id="chName" placeholder="Nomi">
-    <button class="btn primary" onclick="addChannel()">Saqlash</button>
-  </div>
-
-  <div class="card">
-    <h3>Ban / Unban</h3>
-    <input class="input" id="banUser" placeholder="username">
-    <button class="btn primary" onclick="banUser()">Ban</button>
-    <button class="btn secondary" onclick="unbanUser()">Unban</button>
-  </div>
-
-  <div class="card">
-    <h3>Sovrin</h3>
-    <input class="input" id="giftPlace" placeholder="O'rin">
-    <input class="input" id="giftName" placeholder="Nomi">
-    <button class="btn primary" onclick="saveGift()">Saqlash</button>
-  </div>
-
-  <div class="card">
-    <button class="btn primary" onclick="makeWinners()">
-      G'oliblarni belgilash
-    </button>
-
-    <button class="btn" style="background:var(--danger);color:white"
-      onclick="resetContest()">
-      Konkursni tugatish
-    </button>
-  </div>
-  `;
+function copyLink(){
+  navigator.clipboard?.writeText(STATE.link);
+  tg.showAlert("✅ Nusxalandi!");
 }
 
-async function downloadUsersExcel(){
-  const btn = document.getElementById("excelBtn");
-  const originalText = btn.textContent;
-  btn.textContent = "⏳ Tayyorlanmoqda...";
-  btn.disabled = true;
-
-  try{
-    const res = await fetch("/api/admin/users/export", { headers: authHeaders() });
-    if(!res.ok) throw new Error("export failed");
-
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "foydalanuvchilar.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-
-    tg.showAlert("Fayl yuklandi!");
-  }catch{
-    tg.showAlert("Faylni yuklab bo'lmadi");
-  }finally{
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
+function shareLink(){
+  tg.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(STATE.link)}&text=${encodeURIComponent("Konkursga qo'shiling! 🎮🔥")}`);
 }
 
-async function addChannel(){
-  await api("/api/admin/channels",{
-    method:"POST",
-    body:JSON.stringify({
-      username:chUser.value,
-      name:chName.value
-    })
+// ===== TAB SWITCHING =====
+function show(tab){
+  document.querySelectorAll("[id^='tab-']").forEach(el => el.classList.add("hidden"));
+  document.getElementById("tab-"+tab).classList.remove("hidden");
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  const tabEls = document.querySelectorAll(".tab");
+  const tabMap = ["home","leaderboard","gifts","history","admin"];
+  tabEls.forEach(t => {
+    const fn = t.getAttribute("onclick");
+    if(fn && fn.includes(`'${tab}'`)) t.classList.add("active");
   });
-  tg.showAlert("Saqlandi");
+  if(!STATE.loaded[tab]){
+    lazyLoad(tab);
+    STATE.loaded[tab] = true;
+  }
+}
+
+// ===== LAZY LOAD =====
+async function lazyLoad(tab){
+  if(tab === "leaderboard") await loadLeaderboard();
+  if(tab === "gifts") await loadGifts();
+  if(tab === "history") await loadHistory();
+  if(tab === "admin") await loadAdmin();
+}
+
+async function loadLeaderboard(){
+  const el = document.getElementById("lbList");
+  el.innerHTML = `<div class="center"><p>Yuklanmoqda...</p></div>`;
+  try{
+    const data = await api("/api/leaderboard");
+    if(!data.leaderboard.length){ el.innerHTML = `<div class="center"><p>Hali hech kim referal qo'shmagan.</p></div>`; return; }
+    const myPubg = STATE.me?.user?.pubg_id;
+    const medals = {1:"🥇",2:"🥈",3:"🥉"};
+    el.innerHTML = `<div class="card-title" style="padding:0 2px;margin-bottom:10px">TOP ${data.limit} REYTING</div>` +
+      data.leaderboard.map((u,i) => {
+        const isMe = myPubg && myPubg === u.pubg_id;
+        const topClass = i < 3 ? `top${i+1}` : "";
+        return `<div class="lb-item ${topClass} ${isMe?"me":""}">
+          <div class="lb-rank">${medals[u.rank] || "#"+u.rank}</div>
+          <div class="lb-info">
+            <div class="lb-name">${esc(u.name)}</div>
+            <div class="lb-sub">@${u.username||"—"} · 🎮 ${u.pubg_id||"kiritilmagan"}</div>
+          </div>
+          <div class="lb-count">${u.ref_count}</div>
+        </div>`;
+      }).join("");
+  }catch(e){ el.innerHTML = `<div class="center"><p>Xatolik yuz berdi.</p></div>`; }
+}
+
+async function loadGifts(){
+  const el = document.getElementById("giftsList");
+  el.innerHTML = `<div class="center"><p>Yuklanmoqda...</p></div>`;
+  try{
+    const data = await api("/api/gifts");
+    const medals = {1:"🥇",2:"🥈",3:"🥉"};
+    let html = "";
+    if(data.end_date && STATE.me?.contest?.status === "active"){
+      html += `<div class="countdown-bar"><div class="countdown-lbl">⏰ Konkurs tugaydi</div><div class="countdown-val">${esc(data.end_date)}</div></div>`;
+    }
+    if(!data.gifts.length){
+      html += `<div class="center"><p>Sovrinlar hali e'lon qilinmagan.</p></div>`;
+    } else {
+      html += `<div class="card-title" style="padding:0 2px;margin-bottom:10px">TOP ${data.top_limit} GACHA SOVRIN</div>`;
+      html += data.gifts.map(g => `
+        <div class="gift-item">
+          <div class="gift-medal">${medals[g.place]||"🏅"}</div>
+          <div>
+            <div class="gift-place">Top ${g.place}</div>
+            <div class="gift-name">${esc(g.name)}</div>
+          </div>
+        </div>`).join("");
+    }
+    el.innerHTML = html;
+  }catch(e){ el.innerHTML = `<div class="center"><p>Xatolik yuz berdi.</p></div>`; }
+}
+
+async function loadHistory(){
+  const el = document.getElementById("histCard");
+  el.innerHTML = `<div class="center"><p>Yuklanmoqda...</p></div>`;
+  try{
+    const data = await api("/api/history");
+    if(!data.history.length){ el.innerHTML = `<div class="center"><p>Hali hech kimni taklif qilmadingiz.</p></div>`; return; }
+    el.innerHTML = data.history.map(h => {
+      let badge = h.active
+        ? (h.confirmed ? `<span class="badge b-ok">Tasdiqlangan</span>` : `<span class="badge b-wait">Kutilmoqda</span>`)
+        : `<span class="badge b-off">Chiqib ketgan</span>`;
+      const d = h.date ? new Date(h.date).toLocaleDateString("uz-UZ") : "";
+      return `<div class="hist-item">
+        <div class="hist-top"><div class="hist-name">${esc(h.name)}</div>${badge}</div>
+        <div class="hist-date">${d}</div>
+      </div>`;
+    }).join("");
+  }catch(e){ el.innerHTML = `<div class="center"><p>Xatolik.</p></div>`; }
+}
+
+// ===== ADMIN =====
+async function loadAdmin(){
+  try{
+    const [stats, users, channels, gifts, winners, suspicious] = await Promise.all([
+      api("/api/admin/stats"),
+      api("/api/admin/users"),
+      api("/api/admin/channels"),
+      api("/api/gifts"),
+      api("/api/admin/winners"),
+      api("/api/admin/suspicious"),
+    ]);
+
+    // Shubhali faollik
+    const sb = document.getElementById("suspiciousBox");
+    if(suspicious.is_suspicious){
+      sb.classList.remove("hidden");
+      sb.innerHTML = `<div class="warn-box">
+        <div class="warn-title">⚠️ Shubhali faollik aniqlandi!</div>
+        <small>${suspicious.suspicious.length} ta foydalanuvchi 2 daqiqa ichida ro'yxatdan o'tdi</small>
+        ${suspicious.suspicious.map(u => `<div class="user-mini"><div class="user-mini-name">${esc(u.name)}</div><div class="user-mini-sub">📱 ${u.phone||"—"} · ${u.joined_at?.slice(0,16)||""}</div></div>`).join("")}
+      </div>`;
+    }
+
+    // Bugungi faollik
+    document.getElementById("aJoins").textContent = stats.joins_today;
+    document.getElementById("aRefs").textContent = stats.referrals_today;
+    document.getElementById("aLeft").textContent = stats.left_today;
+    document.getElementById("aTotal").textContent = stats.total_users;
+    document.getElementById("aActive").textContent = stats.active_last_24h;
+
+    // So'nggi 3 foydalanuvchi
+    const lu = document.getElementById("lastUsers");
+    lu.innerHTML = users.users.length ? users.users.map(u => `
+      <div class="user-mini">
+        <div class="user-mini-name">${esc(u.name)} ${u.banned ? '<span class="badge b-off">BAN</span>' : ""}</div>
+        <div class="user-mini-sub">🆔 ${u.telegram_id} · @${u.username||"—"} · 🎮 ${u.pubg_id||"kiritilmagan"}</div>
+        <div class="user-mini-sub">📱 ${u.phone||"Yo'q"} · ⭐ ${u.ref_count}</div>
+      </div>`).join("") : "<small>Foydalanuvchilar yo'q</small>";
+
+    // Kanallar
+    const ch = document.getElementById("channelsAdmin");
+    ch.innerHTML = channels.channels.length ? channels.channels.map(c => `
+      <div class="activity-row">
+        <div><div style="font-size:13px;font-weight:600">${esc(c.name||c.username)}</div><small>${c.username}</small></div>
+        <button class="btn btn-danger btn-sm" onclick="removeChannel('${c.username}')">O'chirish</button>
+      </div>`).join("") : "<small>Kanallar yo'q</small>";
+
+    // Sovrinlar
+    const giftsAdm = document.getElementById("giftsAdmin");
+    giftsAdm.innerHTML = gifts.gifts.length ? gifts.gifts.map(g => `
+      <div class="activity-row">
+        <div><div style="font-size:13px;font-weight:600">Top ${g.place} — ${esc(g.name)}</div></div>
+        <button class="btn btn-danger btn-sm" onclick="removeGift(${g.place})">O'chirish</button>
+      </div>`).join("") : "<small>Sovrinlar yo'q</small>";
+
+    // Sozlamalar inputlarini to'ldirish
+    document.getElementById("settingGift").value = stats.gift_top_limit;
+    document.getElementById("settingStat").value = stats.stat_top_limit;
+    if(STATE.me?.contest?.end_date){
+      document.getElementById("endDateText").value = STATE.me.contest.end_date;
+    }
+
+    // G'oliblar
+    const wnrs = document.getElementById("winnersAdmin");
+    if(winners.winners.length){
+      const medals = {1:"🥇",2:"🥈",3:"🥉"};
+      wnrs.innerHTML = winners.winners.map(w => `
+        <div class="user-mini">
+          <div class="user-mini-name">${medals[w.place]||"🏅"} ${esc(w.name)}</div>
+          <div class="user-mini-sub">🎁 ${esc(w.gift_name)} · ⭐ ${w.ref_count}</div>
+        </div>`).join("");
+    } else {
+      wnrs.innerHTML = "<small>Hali g'oliblar belgilanmagan</small>";
+    }
+
+  }catch(e){ console.error("Admin load error:", e); }
+}
+
+// Admin amallar
+async function addChannel(){
+  const user = document.getElementById("newChUser").value.trim();
+  const name = document.getElementById("newChName").value.trim();
+  if(!user || !name){ tg.showAlert("Username va nom kiriting!"); return; }
+  try{
+    await api("/api/admin/channels", { method:"POST", body: JSON.stringify({username:user, name}) });
+    tg.showAlert("✅ Kanal qo'shildi!");
+    document.getElementById("newChUser").value = "";
+    document.getElementById("newChName").value = "";
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){ tg.showAlert("Xatolik!"); }
+}
+
+async function removeChannel(username){
+  try{
+    await api("/api/admin/channels", { method:"DELETE", body: JSON.stringify({username}) });
+    tg.showAlert(`✅ ${username} o'chirildi!`);
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){}
+}
+
+async function addGift(){
+  const place = parseInt(document.getElementById("giftPlace").value);
+  const name = document.getElementById("giftName").value.trim();
+  if(!place || !name){ tg.showAlert("O'rin va nom kiriting!"); return; }
+  try{
+    await api("/api/admin/gifts", { method:"POST", body: JSON.stringify({place, name}) });
+    tg.showAlert("✅ Sovrin saqlandi!");
+    document.getElementById("giftPlace").value = "";
+    document.getElementById("giftName").value = "";
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){ tg.showAlert("Xatolik!"); }
+}
+
+async function removeGift(place){
+  try{
+    await api("/api/admin/gifts", { method:"DELETE", body: JSON.stringify({place}) });
+    tg.showAlert(`✅ Top ${place} sovrin o'chirildi!`);
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){}
+}
+
+async function saveSettings(){
+  const gift = parseInt(document.getElementById("settingGift").value);
+  const stat = parseInt(document.getElementById("settingStat").value);
+  if(!gift || !stat){ tg.showAlert("Raqamlarni kiriting!"); return; }
+  try{
+    await api("/api/admin/settings", { method:"POST", body: JSON.stringify({gift_top_limit:gift, stat_top_limit:stat}) });
+    tg.showAlert("✅ Sozlamalar saqlandi!");
+  }catch(e){ tg.showAlert("Xatolik!"); }
+}
+
+async function saveEndDate(){
+  const text = document.getElementById("endDateText").value.trim();
+  const iso = document.getElementById("endDateIso").value; // "2026-07-15T20:00"
+  if(!text){ tg.showAlert("Sana matnini kiriting!"); return; }
+  try{
+    await api("/api/admin/settings", {
+      method:"POST",
+      body: JSON.stringify({ contest_end_date: text, contest_end_iso: iso || null })
+    });
+    tg.showAlert("✅ Konkurs muddati belgilandi!");
+    // Headerda ko'rsatish uchun yangilash
+    if(STATE.me) STATE.me.contest.end_date = text;
+    document.getElementById("countdownBar").classList.remove("hidden");
+    document.getElementById("countdownVal").textContent = text;
+    document.getElementById("contestBadge").innerHTML = `<span class="contest-badge badge-active">🟢 Faol</span>`;
+  }catch(e){ tg.showAlert("Xatolik!"); }
 }
 
 async function banUser(){
-  await api("/api/admin/ban",{
-    method:"POST",
-    body:JSON.stringify({username:banUser.value})
-  });
+  const u = document.getElementById("banUser").value.trim().replace("@","");
+  if(!u){ tg.showAlert("Username kiriting!"); return; }
+  try{
+    await api("/api/admin/ban", { method:"POST", body: JSON.stringify({username:u}) });
+    tg.showAlert(`✅ @${u} ban qilindi!`);
+    document.getElementById("banUser").value = "";
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){ tg.showAlert("Topilmadi yoki xatolik!"); }
 }
 
 async function unbanUser(){
-  await api("/api/admin/unban",{
-    method:"POST",
-    body:JSON.stringify({username:banUser.value})
-  });
+  const u = document.getElementById("banUser").value.trim().replace("@","");
+  if(!u){ tg.showAlert("Username kiriting!"); return; }
+  try{
+    await api("/api/admin/unban", { method:"POST", body: JSON.stringify({username:u}) });
+    tg.showAlert(`✅ @${u} bandan chiqarildi!`);
+    document.getElementById("banUser").value = "";
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){ tg.showAlert("Topilmadi yoki xatolik!"); }
 }
 
-async function saveGift(){
-  await api("/api/admin/gifts",{
-    method:"POST",
-    body:JSON.stringify({
-      place:Number(giftPlace.value),
-      name:giftName.value
-    })
-  });
-}
-
-async function makeWinners(){
-  await api("/api/admin/winners",{method:"POST"});
-  tg.showAlert("G'oliblar saqlandi");
+async function markWinners(){
+  try{
+    const d = await api("/api/admin/winners", { method:"POST" });
+    tg.showAlert(`✅ ${d.count} ta g'olib belgilandi!`);
+    STATE.loaded["admin"] = false; loadAdmin();
+  }catch(e){ tg.showAlert("Xatolik!"); }
 }
 
 async function resetContest(){
-
-  if(!confirm("Konkursni tugatilsinmi?")) return;
-
-  await api("/api/admin/reset-contest",{
-    method:"POST"
+  tg.showConfirm("Konkursni tugatishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi!", async (ok)=>{
+    if(!ok) return;
+    try{
+      await api("/api/admin/reset-contest", { method:"POST" });
+      tg.showAlert("🏁 Konkurs tugatildi!");
+      STATE.loaded["admin"] = false; loadAdmin();
+    }catch(e){ tg.showAlert("Xatolik!"); }
   });
-
-  tg.showAlert("Konkurs tugatildi");
 }
 
-async function copyReferral(){
-  navigator.clipboard.writeText(STATE.refLink || "");
-  tg.showAlert("Nusxalandi");
+async function downloadExcel(){
+  const btn = document.getElementById("excelBtn");
+  btn.textContent = "⏳ Tayyorlanmoqda...";
+  btn.disabled = true;
+  try{
+    const res = await fetch("/api/admin/users/export", { headers: authH() });
+    if(!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "foydalanuvchilar.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    tg.showAlert("✅ Fayl yuklandi!");
+  }catch(e){ tg.showAlert("Faylni yuklab bo'lmadi!"); }
+  finally{ btn.textContent = "📥 Barchasini yuklab olish"; btn.disabled = false; }
 }
 
-function shareReferral(){
-
-  if(tg.openTelegramLink){
-    tg.openTelegramLink(
-      "https://t.me/share/url?url=" +
-      encodeURIComponent(STATE.refLink)
-    );
-  }
+function esc(str){
+  if(!str) return "";
+  const d = document.createElement("div");
+  d.textContent = String(str);
+  return d.innerHTML;
 }
-
-document.querySelectorAll(".tab").forEach(tab=>{
-  tab.addEventListener("click",()=>{
-    show(tab.dataset.tab);
-  });
-});
 
 init();
 </script>
-
 </body>
 </html>
