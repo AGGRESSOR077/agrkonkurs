@@ -36,6 +36,18 @@ class Database:
             cursor.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0")
         except Exception:
             pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN last_seen TEXT")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN was_subscribed INTEGER DEFAULT 1")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN contest_finished_notified INTEGER DEFAULT 0")
+        except Exception:
+            pass
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS referrals (
@@ -100,6 +112,16 @@ class Database:
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT,
+                user_id INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # event_type: 'join' (yangi ro'yxat), 'referral' (referal qo'shildi), 'left' (kanaldan chiqdi)
+
         self.conn.commit()
 
     # ========== USERS ==========
@@ -121,6 +143,22 @@ class Database:
         cursor = self.conn.cursor()
         cursor.execute("UPDATE users SET pubg_id = ? WHERE user_id = ?", (pubg_id, user_id))
         self.conn.commit()
+
+    def update_last_seen(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (datetime.now().isoformat(), user_id))
+        self.conn.commit()
+
+    def set_subscription_status(self, user_id, is_subscribed: bool):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET was_subscribed = ? WHERE user_id = ?", (1 if is_subscribed else 0, user_id))
+        self.conn.commit()
+
+    def get_subscription_status(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT was_subscribed FROM users WHERE user_id = ?", (user_id,))
+        result = cursor.fetchone()
+        return bool(result[0]) if result else True
 
     def get_user(self, user_id):
         cursor = self.conn.cursor()
@@ -296,6 +334,61 @@ class Database:
         cursor.execute("SELECT COUNT(*) FROM referrals WHERE is_active = 1")
         return cursor.fetchone()[0]
 
+    # ========== ACTIVITY LOG / STATISTIKA ==========
+
+    def log_event(self, event_type, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO activity_log (event_type, user_id, created_at) VALUES (?, ?, ?)
+        """, (event_type, user_id, datetime.now().isoformat()))
+        self.conn.commit()
+
+    def get_today_stats(self):
+        """Bugungi: yangi qo'shilganlar, yangi referallar, chiqib ketganlar"""
+        cursor = self.conn.cursor()
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        cursor.execute("""
+            SELECT COUNT(*) FROM activity_log
+            WHERE event_type = 'join' AND date(created_at) = ?
+        """, (today,))
+        joins = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT COUNT(*) FROM activity_log
+            WHERE event_type = 'referral' AND date(created_at) = ?
+        """, (today,))
+        referrals = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT COUNT(*) FROM activity_log
+            WHERE event_type = 'left' AND date(created_at) = ?
+        """, (today,))
+        left = cursor.fetchone()[0]
+
+        return {"joins_today": joins, "referrals_today": referrals, "left_today": left}
+
+    def get_active_last_24h(self):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM users
+            WHERE last_seen IS NOT NULL AND datetime(last_seen) >= datetime('now', '-1 day')
+        """)
+        return cursor.fetchone()[0]
+
+    def get_recent_suspicious_signups(self, window_minutes=2, min_count=3):
+        """Qisqa vaqt ichida ketma-ket ro'yxatdan o'tganlar (shubhali faollik)"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT user_id, full_name, phone, joined_at FROM users
+            WHERE datetime(joined_at) >= datetime('now', ?)
+            ORDER BY joined_at DESC
+        """, (f'-{window_minutes} minutes',))
+        rows = cursor.fetchall()
+        if len(rows) >= min_count:
+            return rows
+        return []
+
     # ========== CHANNELS ==========
 
     def add_channel(self, channel_username, channel_name):
@@ -351,9 +444,13 @@ class Database:
         cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('gift_top_limit', ?)", (str(limit),))
         self.conn.commit()
 
-    def set_contest_end_date(self, date_text):
+    def set_contest_end_date(self, date_text, date_iso=None):
         cursor = self.conn.cursor()
         cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('contest_end_date', ?)", (date_text,))
+        if date_iso:
+            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('contest_end_iso', ?)", (date_iso,))
+        else:
+            cursor.execute("DELETE FROM settings WHERE key = 'contest_end_iso'")
         self.conn.commit()
 
     def get_contest_end_date(self):
@@ -362,14 +459,64 @@ class Database:
         result = cursor.fetchone()
         return result[0] if result else None
 
+    def get_contest_end_iso(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'contest_end_iso'")
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+    def is_contest_finished(self):
+        """ISO sana o'tgan bo'lsa True qaytaradi"""
+        end_iso = self.get_contest_end_iso()
+        if not end_iso:
+            return False
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT datetime('now') >= datetime(?)", (end_iso,))
+        result = cursor.fetchone()
+        return bool(result[0])
+
+    def get_contest_status_flag(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'contest_status'")
+        result = cursor.fetchone()
+        return result[0] if result else "active"  # active | finished
+
+    def set_contest_status_flag(self, status):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('contest_status', ?)", (status,))
+        self.conn.commit()
+
+    def get_users_not_notified_of_finish(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT user_id FROM users WHERE is_banned = 0 AND contest_finished_notified = 0")
+        return [row[0] for row in cursor.fetchall()]
+
+    def mark_contest_finish_notified(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET contest_finished_notified = 1 WHERE user_id = ?", (user_id,))
+        self.conn.commit()
+
+    def get_24h_warning_sent(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = '24h_warning_sent'")
+        result = cursor.fetchone()
+        return result[0] == "1" if result else False
+
+    def set_24h_warning_sent(self, val: bool):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('24h_warning_sent', ?)", ("1" if val else "0",))
+        self.conn.commit()
+
     def reset_contest(self):
         """Konkursni tugatadi: barcha referallar o'chiriladi, users.referrer_id NULL qilinadi"""
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM referrals")
-        cursor.execute("UPDATE users SET referrer_id = NULL")
+        cursor.execute("UPDATE users SET referrer_id = NULL, contest_finished_notified = 0")
         cursor.execute("DELETE FROM gifts")
-        cursor.execute("DELETE FROM settings WHERE key = 'contest_end_date'")
+        cursor.execute("DELETE FROM settings WHERE key IN ('contest_end_date', 'contest_end_iso', '24h_warning_sent')")
         cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('gift_top_limit', '10')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('contest_status', 'active')")
+        cursor.execute("DELETE FROM activity_log")
         self.conn.commit()
 
     # ========== WINNERS ==========
