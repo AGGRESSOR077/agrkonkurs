@@ -186,19 +186,11 @@ async def start_handler(message: types.Message, state: FSMContext):
         return
 
     user = db.get_user(user_id)
+    db.update_last_seen(user_id)
 
-    # Yangi foydalanuvchi
+    # Yangi foydalanuvchi — faqat telefon so'raladi (kanal va PUBG ID Web App ichida)
     if not user:
         await state.update_data(referrer_id=referrer_id, full_name=full_name, username=username)
-        not_subscribed = await check_subscriptions(user_id)
-        if not_subscribed and user_id != ADMIN_ID:
-            await message.answer(
-                f"👋 Salom, <b>{full_name}</b>!\n\n"
-                "⚠️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:",
-                parse_mode="HTML",
-                reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub_then_phone")
-            )
-            return
         await message.answer(
             f"👋 Salom, <b>{full_name}</b>!\n\n"
             "📱 Ro'yxatdan o'tish uchun telefon raqamingizni yuboring:",
@@ -211,24 +203,8 @@ async def start_handler(message: types.Message, state: FSMContext):
     # Telefon yo'q — davom ettirish
     if not user[4]:
         await state.update_data(referrer_id=referrer_id)
-        not_subscribed = await check_subscriptions(user_id)
-        if not_subscribed and user_id != ADMIN_ID:
-            await message.answer(
-                "⚠️ Endi quyidagi kanallarga obuna bo'ling:",
-                reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub_then_phone")
-            )
-            return
         await message.answer("📱 Telefon raqamingizni yuboring:", reply_markup=phone_keyboard())
         await state.set_state(RegisterStates.waiting_phone)
-        return
-
-    # Kanal obunasi
-    not_subscribed = await check_subscriptions(user_id)
-    if not_subscribed and user_id != ADMIN_ID:
-        await message.answer(
-            "⚠️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:",
-            reply_markup=subscription_inline_keyboard(not_subscribed, "check_sub")
-        )
         return
 
     await message.answer(
@@ -265,10 +241,12 @@ async def phone_handler(message: types.Message, state: FSMContext):
     user = db.get_user(user_id)
     if not user:
         db.add_user(user_id, full_name, username, None, referrer_id)
+        db.log_event("join", user_id)
     db.update_phone(user_id, phone)
 
     if referrer_id and db.get_user(referrer_id):
         db.add_referral(referrer_id, user_id)
+        db.log_event("referral", referrer_id)
         try:
             await bot.send_message(
                 referrer_id,
@@ -1154,7 +1132,76 @@ async def daily_reminder():
         except Exception as e:
             logger.error(f"Top3 xabar xato: {e}")
 
+        # Kunlik avtomatik Excel backup adminga
+        try:
+            await bot.send_message(ADMIN_ID, "📦 Kunlik avtomatik backup tayyorlanmoqda...")
+            await generate_and_send_excel(ADMIN_ID)
+        except Exception as e:
+            logger.error(f"Kunlik backup xato: {e}")
+
         await asyncio.sleep(86400)
+
+
+# ===================== KONKURS NAZORATCHISI (sana, 24-soat ogohlantirish) =====================
+
+async def contest_watcher():
+    """Har 5 daqiqada konkurs sanasini tekshiradi:
+    - tugashiga 24 soat qolganda ommaviy ogohlantirish yuboradi
+    - sana o'tgan bo'lsa, konkursni 'finished' deb belgilab, hammaga DM yuboradi
+    """
+    while True:
+        try:
+            end_iso = db.get_contest_end_iso()
+            status = db.get_contest_status_flag()
+
+            if end_iso and status == "active":
+                from datetime import datetime as dt
+                try:
+                    end_dt = dt.fromisoformat(end_iso)
+                except Exception:
+                    end_dt = None
+
+                if end_dt:
+                    now = dt.now()
+                    remaining = (end_dt - now).total_seconds()
+
+                    # 24 soat qoldi ogohlantirishi (faqat bir marta)
+                    if 0 < remaining <= 86400 and not db.get_24h_warning_sent():
+                        db.set_24h_warning_sent(True)
+                        user_ids = db.get_all_user_ids()
+                        for uid in user_ids:
+                            try:
+                                await bot.send_message(
+                                    uid,
+                                    "⏰ <b>Diqqat! Konkurs tugashiga 24 soat qoldi!</b>\n\n"
+                                    "Top reytingga kirish uchun oxirgi imkoniyat — "
+                                    "do'stlaringizni hoziroq taklif qiling! 🔥",
+                                    parse_mode="HTML"
+                                )
+                            except Exception:
+                                pass
+                            await asyncio.sleep(0.05)
+
+                    # Konkurs muddati tugagan
+                    if remaining <= 0:
+                        db.set_contest_status_flag("finished")
+                        user_ids = db.get_users_not_notified_of_finish()
+                        for uid in user_ids:
+                            try:
+                                await bot.send_message(
+                                    uid,
+                                    "🏁 <b>Konkurs tugadi!</b>\n\n"
+                                    "Qatnashganingiz uchun rahmat! G'oliblar tez orada e'lon qilinadi. 🎉",
+                                    parse_mode="HTML"
+                                )
+                                db.mark_contest_finish_notified(uid)
+                            except Exception:
+                                pass
+                            await asyncio.sleep(0.05)
+        except Exception as e:
+            logger.error(f"contest_watcher xato: {e}")
+
+        await asyncio.sleep(300)  # 5 daqiqada bir tekshiradi
 
 
 # ===================== CHANNEL MEMBER UPDATE =====================
@@ -1171,6 +1218,22 @@ async def channel_member_update(update: types.ChatMemberUpdated):
     target_user = update.new_chat_member.user
 
     if old_status in ["member", "administrator", "creator"] and new_status in ["left", "kicked"]:
+        db.set_subscription_status(target_user.id, False)
+        db.log_event("left", target_user.id)
+
+        # O'ziga DM — Web App'da qayta obuna so'raladi, bu yerda eslatma
+        try:
+            await bot.send_message(
+                target_user.id,
+                "⚠️ <b>Siz kanaldan chiqib ketdingiz!</b>\n\n"
+                "Konkursda ishtirok etishni davom ettirish uchun qaytadan obuna bo'ling.\n"
+                "🎮 «Konkurs» tugmasini bosing — qayta obuna bo'lish ekrani ochiladi.",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Foydalanuvchiga obuna eslatmasi xato: {e}")
+
+        # Referal egasiga DM
         referrer_id = db.get_referrer_of(target_user.id)
         if referrer_id:
             db.deactivate_referral(referrer_id, target_user.id)
@@ -1188,9 +1251,12 @@ async def channel_member_update(update: types.ChatMemberUpdated):
                 logger.error(f"Referer xabar xato: {e}")
 
     elif old_status in ["left", "kicked", "banned"] and new_status in ["member", "administrator", "creator"]:
+        db.set_subscription_status(target_user.id, True)
+
         referrer_id = db.get_referrer_of(target_user.id)
         if referrer_id:
             db.add_referral(referrer_id, target_user.id)
+            db.log_event("referral", referrer_id)
             new_count = db.get_referral_count(referrer_id)
             try:
                 await bot.send_message(
@@ -1210,6 +1276,7 @@ async def channel_member_update(update: types.ChatMemberUpdated):
 async def main():
     logger.info("Bot ishga tushdi!")
     asyncio.create_task(daily_reminder())
+    asyncio.create_task(contest_watcher())
     await dp.start_polling(bot, allowed_updates=["message", "callback_query", "chat_member"])
 
 
