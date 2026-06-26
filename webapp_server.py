@@ -216,7 +216,11 @@ def check_subscription():
         "all_subscribed": len(not_subscribed) == 0,
         "not_subscribed": not_subscribed
     })
-    """Foydalanuvchi Web App ichida ixtiyoriy ravishda PUBG ID qo'shadi/yangilaydi"""
+
+
+@app.route("/api/pubg-id", methods=["POST"])
+def set_pubg_id():
+    """Foydalanuvchi Web App ichida PUBG ID qo'shadi/yangilaydi"""
     tg_user = get_user_from_request()
     if not tg_user:
         return jsonify({"error": "unauthorized"}), 401
