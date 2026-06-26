@@ -14,7 +14,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from openpyxl import Workbook
 from database import Database
 
-BOT_TOKEN = "8935442087:AAEkbThT6uMQQqW_LkiK6P0PV5q4QuxlV0o"
+BOT_TOKEN = "8935442087:AAF5boZ2MRj-UkFXaCZ1Zrl-WnV4i60wZMg"
 ADMIN_ID = 7808709581
 WEBAPP_URL = "https://agrkonkurs-konkurs.up.railway.app"  # ⚠️ Bu yerga Web App joylashgan haqiqiy HTTPS manzilni yozing
 
