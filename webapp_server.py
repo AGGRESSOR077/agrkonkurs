@@ -14,7 +14,7 @@ from openpyxl import Workbook
 
 from database import Database
 
-BOT_TOKEN = "8935442087:AAEkbThT6uMQQqW_LkiK6P0PV5q4QuxlV0o"
+BOT_TOKEN = "8935442087:AAF5boZ2MRj-UkFXaCZ1Zrl-WnV4i60wZMg"
 ADMIN_ID = 7808709581
 
 app = Flask(__name__, static_folder="static")
